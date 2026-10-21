@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ActivityPlus - Personal Money Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+    <meta name="theme-color" content="#16a34a">
+</head>
+<body>
+
+    <!-- ============================================================
+         MODERN LOADING ANIMATION
+         ============================================================ -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-container">
+            <div class="loading-logo">
+                <img class="logo-img" src="assets/logo-icon.png" alt="ActivityPlus logo">
+            </div>
+            <div class="loading-text">ActivityPlus</div>
+            <div class="loading-progress"></div>
+            <div class="loading-dots">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         LOGIN SCREEN
+         ============================================================ -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-card">
+            <div class="login-brand">
+                <span class="login-mark"><img class="logo-img" src="assets/logo-icon.png" alt="ActivityPlus logo"></span>
+                <div>
+                    <strong>Activity<b>Plus</b></strong>
+                    <small>Personal Finance System</small>
+                </div>
+            </div>
+            <div class="login-copy">
+                <h1>Welcome back</h1>
+                <p>Sign in to continue to your private finance system.</p>
+            </div>
+            <form id="loginForm" class="login-form">
+                <label>
+                    <span>Email</span>
+                    <div class="input-wrapper">
+                        <i class="ph ph-envelope-simple input-icon"></i>
+                        <input id="loginEmail" type="email" autocomplete="username" required placeholder="you@example.com">
+                    </div>
+                </label>
+                <label>
+                    <span>Password</span>
+                    <div class="input-wrapper">
+                        <i class="ph ph-lock-simple input-icon"></i>
+                        <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Enter your password">
+                        <button type="button" class="eye-toggle" id="loginEye" tabindex="-1" aria-label="Toggle password visibility">
+                            <i class="ph-bold ph-eye"></i>
+                        </button>
+                    </div>
+                </label>
+                <button class="primary-btn full" type="submit">
+                    <i class="ph-bold ph-sign-in"></i> Login
+                </button>
+                <p id="loginError" class="login-error"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         SIDEBAR
+         ============================================================ -->
+    <aside class="sidebar">
+        <div class="brand">
+            <span class="brand-mark"><img class="logo-img" src="assets/logo-icon.png" alt="ActivityPlus logo"></span>
+            <span>Activity<b>Plus</b></span>
+        </div>
+        <nav>
+            <button class="nav-link active" data-section="dashboard"><i class="ph-fill ph-house"></i><span>Dashboard</span></button>
+            <button class="nav-link" data-section="transactions"><i class="ph-fill ph-receipt"></i><span>Transactions</span></button>
+            <button class="nav-link" data-section="analytics"><i class="ph-fill ph-chart-line-up"></i><span>Analytics</span></button>
+            <button class="nav-link" data-section="budgets"><i class="ph-fill ph-target"></i><span>Budgets</span></button>
+            <button class="nav-link" data-section="savings"><i class="ph-fill ph-piggy-bank"></i><span>Savings</span></button>
+            <button class="nav-link" data-section="wallets"><i class="ph-fill ph-wallet"></i><span>Wallets</span></button>
+            <button class="nav-link" data-section="settings"><i class="ph-fill ph-gear"></i><span>Settings</span></button>
+        </nav>
+        <div class="sidebar-tip">
+            <strong><i class="ph-fill ph-lightbulb"></i> Smart Spending</strong>
+            <p>Pause before non-essential purchases and review your budget first.</p>
+        </div>
+    </aside>
+
+    <!-- ============================================================
+         MAIN CONTENT
+         ============================================================ -->
+    <main class="main">
+        <header class="topbar">
+            <div class="mobile-brand">
+                <span class="brand-mark"><img class="logo-img" src="assets/logo-icon.png" alt="ActivityPlus logo"></span>
+                <div>
+                    <strong>Activity<b>Plus</b></strong>
+                    <small>Personal Finance</small>
+                </div>
+            </div>
+            <div class="topbar-title">
+                <p class="eyebrow">PERSONAL FINANCE</p>
+                <h1 id="pageTitle">Dashboard</h1>
+            </div>
+            <div class="top-actions">
+                <button class="icon-btn" id="themeBtn" title="Toggle theme">
+                    <i class="ph-bold ph-moon"></i>
+                </button>
+                <button class="primary-btn" id="quickExpense">
+                    <i class="ph-bold ph-minus"></i> Expense
+                </button>
+            </div>
+        </header>
+
+        <!-- Dashboard -->
+        <section id="dashboard" class="section active-section">
+            <div class="currency-tabs">
+                <button class="currency active" data-currency="ALL">All currencies</button>
+                <button class="currency" data-currency="SLSH">SLSH</button>
+                <button class="currency" data-currency="USD">USD</button>
+                <button class="currency" data-currency="ETB">ETB</button>
+            </div>
+            <div class="cards">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="ph-fill ph-wallet"></i></div>
+                    <p>Total Balance</p>
+                    <h2 id="balanceValue">0</h2>
+                    <small id="balanceLabel">All currencies</small>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="ph-bold ph-arrow-up"></i></div>
+                    <p>Total Income</p>
+                    <h2 id="incomeValue">0</h2>
+                    <small>This period</small>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="ph-bold ph-arrow-down"></i></div>
+                    <p>Total Expenses</p>
+                    <h2 id="expenseValue">0</h2>
+                    <small>This period</small>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="ph-fill ph-piggy-bank"></i></div>
+                    <p>Total Savings</p>
+                    <h2 id="savingValue">0</h2>
+                    <small>Across goals</small>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="panel">
+                    <div class="panel-head">
+                        <span class="panel-icon"><i class="ph-fill ph-receipt"></i></span>
+                        <div>
+                            <h3>Recent Transactions</h3>
+                            <p>Your latest money activity</p>
+                        </div>
+                        <button class="text-btn" data-go="transactions">View all</button>
+                    </div>
+                    <div id="recentTransactions" class="transaction-list"></div>
+                </div>
+                <div class="panel">
+                    <div class="panel-head">
+                        <span class="panel-icon"><i class="ph-fill ph-target"></i></span>
+                        <div>
+                            <h3>Budget Snapshot</h3>
+                            <p>Current spending limits</p>
+                        </div>
+                        <button class="text-btn" data-go="budgets">Manage</button>
+                    </div>
+                    <div id="budgetPreview"></div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-head">
+                    <span class="panel-icon"><i class="ph-fill ph-piggy-bank"></i></span>
+                    <div>
+                        <h3>Savings Goals</h3>
+                        <p>Keep your goals visible</p>
+                    </div>
+                    <button class="text-btn" data-go="savings">Manage</button>
+                </div>
+                <div id="goalPreview" class="goal-preview"></div>
+            </div>
+            <div class="panel">
+                <div class="panel-head">
+                    <span class="panel-icon"><i class="ph-fill ph-lightbulb"></i></span>
+                    <div>
+                        <h3>Smart Spending Check</h3>
+                        <p>Think before you spend</p>
+                    </div>
+                </div>
+                <div class="smart-check">
+                    <div class="smart-icon"><i class="ph-fill ph-question"></i></div>
+                    <div>
+                        <strong>Do I really need this?</strong>
+                        <p>If it is a want, pause for 24 hours and check your budget before buying.</p>
+                    </div>
+                    <button class="secondary-btn" id="checkSpending">Check Purchase</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Transactions -->
+        <section id="transactions" class="section">
+            <div class="section-toolbar">
+                <div>
+                    <p>Track every income and expense.</p>
+                </div>
+                <div class="button-group">
+                    <button class="primary-btn" id="addIncome"><i class="ph-bold ph-plus"></i> Income</button>
+                    <button class="danger-btn" id="addExpense"><i class="ph-bold ph-minus"></i> Expense</button>
+                    <button class="secondary-btn" id="addTransfer"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="filters">
+                    <input id="searchTransactions" placeholder="Search transactions...">
+                    <select id="typeFilter">
+                        <option value="all">All types</option>
+                        <option value="income">Income</option>
+                        <option value="expense">Expense</option>
+                        <option value="transfer">Transfer</option>
+                    </select>
+                    <select id="categoryFilter">
+                        <option value="all">All categories</option>
+                    </select>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Type</th>
+                                <th>Category</th>
+                                <th>Wallet</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analytics -->
+        <section id="analytics" class="section">
+            <div class="section-toolbar">
+                <div>
+                    <p>Understand where your money goes.</p>
+                </div>
+                <select id="analyticsCurrency" class="currency">
+                    <option>USD</option>
+                    <option>SLSH</option>
+                    <option>ETB</option>
+                </select>
+            </div>
+            <div class="cards three">
+                <div class="stat-card">
+                    <p>Income</p>
+                    <h2 id="aIncome">0</h2>
+                </div>
+                <div class="stat-card">
+                    <p>Expenses</p>
+                    <h2 id="aExpense">0</h2>
+                </div>
+                <div class="stat-card">
+                    <p>Net</p>
+                    <h2 id="aNet">0</h2>
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="panel">
+                    <div class="panel-head">
+                        <span class="panel-icon"><i class="ph-fill ph-chart-bar"></i></span>
+                        <div>
+                            <h3>Monthly Activity</h3>
+                            <p>Income vs expenses by month</p>
+                        </div>
+                    </div>
+                    <div id="monthlyChart" class="bar-chart"></div>
+                </div>
+                <div class="panel">
+                    <div class="panel-head">
+                        <span class="panel-icon"><i class="ph-fill ph-chart-pie-slice"></i></span>
+                        <div>
+                            <h3>Top Spending Categories</h3>
+                            <p>Expense distribution</p>
+                        </div>
+                    </div>
+                    <div id="categoryChart" class="category-chart"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Budgets -->
+        <section id="budgets" class="section">
+            <div class="section-toolbar">
+                <div>
+                    <p>Set monthly limits for categories.</p>
+                </div>
+                <button class="primary-btn" id="addBudget"><i class="ph-bold ph-plus"></i> New Budget</button>
+            </div>
+            <div id="budgetGrid" class="goals-grid"></div>
+        </section>
+
+        <!-- Savings -->
+        <section id="savings" class="section">
+            <div class="section-toolbar">
+                <div>
+                    <p>Save with a purpose.</p>
+                </div>
+                <button class="primary-btn" id="addGoal"><i class="ph-bold ph-plus"></i> New Goal</button>
+            </div>
+            <div id="goalsGrid" class="goals-grid"></div>
+        </section>
+
+        <!-- Wallets -->
+        <section id="wallets" class="section">
+            <div class="section-toolbar">
+                <div>
+                    <p>See where your money is stored.</p>
+                </div>
+                <button class="primary-btn" id="addWallet"><i class="ph-bold ph-plus"></i> New Wallet</button>
+            </div>
+            <div id="walletGrid" class="wallet-grid"></div>
+        </section>
+
+        <!-- Settings -->
+        <section id="settings" class="section">
+            <div class="section-toolbar">
+                <div>
+                    <p>Manage your profile, security, appearance and ActivityPlus data.</p>
+                </div>
+            </div>
+            <div class="settings-grid">
+                <div class="panel settings-card">
+                    <div class="settings-title">
+                        <div class="settings-icon"><i class="ph-fill ph-user"></i></div>
+                        <div>
+                            <h3>Profile</h3>
+                            <p class="muted">Your private account details.</p>
+                        </div>
+                    </div>
+                    <form id="profileForm" class="settings-form">
+                        <label>Name<input id="profileName" placeholder="Your name"></label>
+                        <label>Email<input id="profileEmail" type="email" readonly></label>
+                        <button class="secondary-btn" type="submit"><i class="ph-bold ph-floppy-disk"></i> Save Profile</button>
+                    </form>
+                </div>
+                <div class="panel settings-card">
+                    <div class="settings-title">
+                        <div class="settings-icon"><i class="ph-fill ph-lock-simple"></i></div>
+                        <div>
+                            <h3>Password</h3>
+                            <p class="muted">Update your login password.</p>
+                        </div>
+                    </div>
+                    <form id="passwordForm" class="settings-form">
+                        <label>New password
+                            <div class="input-wrapper">
+                                <input id="newPassword" type="password" minlength="6" autocomplete="new-password" required>
+                                <button type="button" class="eye-toggle" data-target="newPassword" aria-label="Toggle password visibility">
+                                    <i class="ph-bold ph-eye"></i>
+                                </button>
+                            </div>
+                        </label>
+                        <label>Confirm password
+                            <div class="input-wrapper">
+                                <input id="confirmPassword" type="password" minlength="6" autocomplete="new-password" required>
+                                <button type="button" class="eye-toggle" data-target="confirmPassword" aria-label="Toggle password visibility">
+                                    <i class="ph-bold ph-eye"></i>
+                                </button>
+                            </div>
+                        </label>
+                        <button class="secondary-btn" type="submit"><i class="ph-bold ph-key"></i> Update Password</button>
+                    </form>
+                </div>
+                <div class="panel settings-card">
+                    <div class="settings-title">
+                        <div class="settings-icon"><i class="ph-fill ph-shield-check"></i></div>
+                        <div>
+                            <h3>PIN</h3>
+                            <p class="muted">Protect delete and reset actions.</p>
+                        </div>
+                    </div>
+                    <div class="button-stack">
+                        <button class="secondary-btn" id="setPin"><i class="ph-bold ph-plus"></i> Create / Change PIN</button>
+                        <button class="danger-btn full" id="removePin"><i class="ph-bold ph-trash"></i> Remove PIN</button>
+                    </div>
+                    <small id="pinStatus" class="status-line"></small>
+                </div>
+                <div class="panel settings-card">
+                    <div class="settings-title">
+                        <div class="settings-icon"><i class="ph-fill ph-palette"></i></div>
+                        <div>
+                            <h3>Appearance</h3>
+                            <p class="muted">Switch between light and dark mode.</p>
+                        </div>
+                    </div>
+                    <button class="secondary-btn" id="settingsThemeBtn"><i class="ph-bold ph-moon"></i> Toggle Dark Mode</button>
+                </div>
+                <div class="panel settings-card">
+                    <div class="settings-title">
+                        <div class="settings-icon"><i class="ph-fill ph-download-simple"></i></div>
+                        <div>
+                            <h3>Backup</h3>
+                            <p class="muted">Export or restore your ActivityPlus data.</p>
+                        </div>
+                    </div>
+                    <div class="button-stack">
+                        <button class="secondary-btn" id="exportJson"><i class="ph-bold ph-file-code"></i> Export JSON</button>
+                        <button class="secondary-btn" id="exportCsv"><i class="ph-bold ph-file-csv"></i> Export CSV</button>
+                        <label class="file-btn secondary-btn"><i class="ph-bold ph-file-arrow-up"></i> Import JSON<input type="file" id="importJson" accept="application/json"></label>
+                    </div>
+                </div>
+                <div class="panel settings-card">
+                    <div class="settings-title">
+                        <div class="settings-icon"><i class="ph-fill ph-database"></i></div>
+                        <div>
+                            <h3>Data</h3>
+                            <p class="muted">Reset ActivityPlus to its original empty state.</p>
+                        </div>
+                    </div>
+                    <button class="danger-btn full" id="resetData"><i class="ph-bold ph-arrow-counter-clockwise"></i> Reset All Data</button>
+                </div>
+                <div class="panel settings-card report-card">
+                    <div class="settings-title">
+                        <div class="settings-icon"><i class="ph-fill ph-file-pdf"></i></div>
+                        <div>
+                            <h3>Report</h3>
+                            <p class="muted">Download a PDF with your summary, wallets, budgets, savings goals and transactions.</p>
+                        </div>
+                    </div>
+                    <div class="report-actions">
+                        <select id="reportPeriod" aria-label="Report period">
+                            <option value="month">This month</option>
+                            <option value="30">Last 30 days</option>
+                            <option value="year">This year</option>
+                            <option value="all">All time</option>
+                        </select>
+                        <button class="primary-btn" id="downloadPdf" type="button"><i class="ph-bold ph-file-pdf"></i> Download PDF</button>
+                    </div>
+                </div>
+                <div class="panel settings-card logout-card">
+                    <div class="settings-title">
+                        <div class="settings-icon logout-icon"><i class="ph-fill ph-sign-out"></i></div>
+                        <div>
+                            <h3>Logout</h3>
+                            <p class="muted">Sign out of your ActivityPlus account.</p>
+                        </div>
+                    </div>
+                    <button class="danger-btn full" id="logoutBtn"><i class="ph-bold ph-sign-out"></i> Logout</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ============================================================
+         MODALS
+         ============================================================ -->
+    <div class="modal" id="modal">
+        <div class="modal-box">
+            <button class="close" id="closeModal"><i class="ph-bold ph-x"></i></button>
+            <h2 id="modalTitle">Add Transaction</h2>
+            <form id="transactionForm">
+                <input type="hidden" id="txId">
+                <input type="hidden" id="txType">
+                <label>Description<input id="txDescription" required placeholder="e.g. Salary, Food"></label>
+                <div class="form-row">
+                    <label>Amount<input id="txAmount" type="number" min="0" step="any" required></label>
+                    <label>Currency
+                        <select id="txCurrency">
+                            <option>USD</option>
+                            <option>SLSH</option>
+                            <option>ETB</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="form-row">
+                    <label>Category
+                        <select id="txCategory">
+                            <option>Salary</option>
+                            <option>Food</option>
+                            <option>Transport</option>
+                            <option>Shopping</option>
+                            <option>Bills</option>
+                            <option>Entertainment</option>
+                            <option>Business</option>
+                            <option>Other</option>
+                        </select>
+                    </label>
+                    <label>Wallet<select id="txWallet"></select></label>
+                </div>
+                <label>Date<input id="txDate" type="date" required></label>
+                <button class="primary-btn full" type="submit"><i class="ph-bold ph-floppy-disk"></i> Save Transaction</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="transferModal">
+        <div class="modal-box">
+            <button class="close" data-close="transferModal"><i class="ph-bold ph-x"></i></button>
+            <h2>Transfer Money</h2>
+            <form id="transferForm">
+                <label>Amount<input id="transferAmount" type="number" min="0.01" step="0.01" inputmode="decimal" required></label>
+                <label>Currency
+                    <select id="transferCurrency">
+                        <option>SLSH</option>
+                        <option>USD</option>
+                        <option>ETB</option>
+                    </select>
+                </label>
+                <div class="form-row">
+                    <label>From<select id="fromWallet"></select></label>
+                    <label>To<select id="toWallet"></select></label>
+                </div>
+                <label>Date<input id="transferDate" type="date" required></label>
+                <button class="primary-btn full" type="submit"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="goalModal">
+        <div class="modal-box">
+            <button class="close" data-close="goalModal"><i class="ph-bold ph-x"></i></button>
+            <h2>New Savings Goal</h2>
+            <form id="goalForm">
+                <label>Goal name<input id="goalName" required placeholder="e.g. New Laptop"></label>
+                <div class="form-row">
+                    <label>Target<input id="goalTarget" type="number" min="1" required></label>
+                    <label>Currency
+                        <select id="goalCurrency">
+                            <option>USD</option>
+                            <option>SLSH</option>
+                            <option>ETB</option>
+                        </select>
+                    </label>
+                </div>
+                <label>Deadline<input id="goalDeadline" type="date"></label>
+                <button class="primary-btn full" type="submit"><i class="ph-bold ph-target"></i> Create Goal</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="walletModal">
+        <div class="modal-box">
+            <button class="close" data-close="walletModal"><i class="ph-bold ph-x"></i></button>
+            <h2>New Wallet</h2>
+            <form id="walletForm">
+                <label>Currency
+                    <select id="walletCurrency">
+                        <option>USD</option>
+                        <option>SLSH</option>
+                        <option>ETB</option>
+                    </select>
+                </label>
+                <label>Wallet / Service<select id="walletPreset"></select></label>
+                <label>Wallet name<input id="walletName" required placeholder="e.g. Cash"></label>
+                <label>Type
+                    <select id="walletType">
+                        <option>Cash</option>
+                        <option>Bank</option>
+                        <option>E-Wallet</option>
+                        <option>Card</option>
+                    </select>
+                </label>
+                <button class="primary-btn full" type="submit"><i class="ph-bold ph-wallet"></i> Create Wallet</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="budgetModal">
+        <div class="modal-box">
+            <button class="close" data-close="budgetModal"><i class="ph-bold ph-x"></i></button>
+            <h2>New Budget</h2>
+            <form id="budgetForm">
+                <label>Category
+                    <select id="budgetCategory">
+                        <option>Food</option>
+                        <option>Transport</option>
+                        <option>Shopping</option>
+                        <option>Bills</option>
+                        <option>Entertainment</option>
+                        <option>Business</option>
+                        <option>Other</option>
+                    </select>
+                </label>
+                <div class="form-row">
+                    <label>Monthly limit<input id="budgetLimit" type="number" min="1" required></label>
+                    <label>Currency
+                        <select id="budgetCurrency">
+                            <option>USD</option>
+                            <option>SLSH</option>
+                            <option>ETB</option>
+                        </select>
+                    </label>
+                </div>
+                <button class="primary-btn full" type="submit"><i class="ph-bold ph-target"></i> Create Budget</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Busy overlay: shown while data is loading / saving / editing -->
+    <div id="busyOverlay" class="busy-overlay" role="status" aria-live="polite" aria-hidden="true">
+        <div class="busy-card">
+            <div class="busy-logo"><img src="assets/logo-icon.png" alt=""></div>
+            <div class="busy-text" id="busyText">Loading...</div>
+            <div class="loading-dots"><span></span><span></span><span></span></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <div id="pinConfirmModal" class="modal">
+        <div class="modal-box">
+            <button class="close" data-close="pinConfirmModal"><i class="ph-bold ph-x"></i></button>
+            <h2>Confirm Action</h2>
+            <p class="muted">Enter your password and PIN to continue.</p>
+            <form id="pinConfirmForm">
+                <label>Password
+                    <div class="input-wrapper">
+                        <input id="confirmActionPassword" type="password" autocomplete="current-password" required>
+                        <button type="button" class="eye-toggle" data-target="confirmActionPassword" aria-label="Toggle password visibility">
+                            <i class="ph-bold ph-eye"></i>
+                        </button>
+                    </div>
+                </label>
+                <label>PIN<input id="confirmActionPin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{4,6}" required></label>
+                <button class="danger-btn full" type="submit"><i class="ph-bold ph-check"></i> Confirm</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
