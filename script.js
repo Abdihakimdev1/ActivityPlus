@@ -101,7 +101,8 @@ const defaultData = {
         { id: 2, name: "E-Wallet", fullName: "", kind: "Personal", type: "E-Wallet", currency: "SLSH" },
         { id: 3, name: "Bank", fullName: "", kind: "Personal", type: "Bank", currency: "ETB" }
     ],
-    budgets: []
+    budgets: [],
+    rates: { USD_SLSH: 0, USD_ETB: 0 }
 };
 
 let data = JSON.parse(JSON.stringify(defaultData));
@@ -128,7 +129,11 @@ const normalizeData = (value) => {
         transactions: Array.isArray(x.transactions) ? x.transactions : [],
         goals: Array.isArray(x.goals) ? x.goals : [],
         wallets: wallets.map(normalizeWallet),
-        budgets: Array.isArray(x.budgets) ? x.budgets : []
+        budgets: Array.isArray(x.budgets) ? x.budgets : [],
+        rates: {
+            USD_SLSH: Number(x.rates?.USD_SLSH) > 0 ? Number(x.rates.USD_SLSH) : 0,
+            USD_ETB: Number(x.rates?.USD_ETB) > 0 ? Number(x.rates.USD_ETB) : 0
+        }
     };
 };
 
@@ -240,7 +245,28 @@ const txAmount = (type, c, cat) => data.transactions
 // ============================================================
 // RENDER FUNCTIONS
 // ============================================================
+// ---- Exchange rates (saved in Settings) ----
+// Units of each currency per 1 USD; every other pair is derived from these two.
+const perUsd = c => c === 'USD' ? 1 : Number(data.rates?.['USD_' + c]) || 0;
+const savedRate = (from, to) => {
+    const a = perUsd(from), b = perUsd(to);
+    return a > 0 && b > 0 ? b / a : 0;
+};
+
+function renderRates() {
+    if (!$('#ratesTable')) return;
+    const active = document.activeElement && document.activeElement.id;
+    if (active !== 'rateUsdSlsh') $('#rateUsdSlsh').value = data.rates?.USD_SLSH || '';
+    if (active !== 'rateUsdEtb') $('#rateUsdEtb').value = data.rates?.USD_ETB || '';
+    const pairs = [['USD', 'SLSH'], ['SLSH', 'USD'], ['USD', 'ETB'], ['ETB', 'USD'], ['SLSH', 'ETB'], ['ETB', 'SLSH']];
+    $('#ratesTable').innerHTML = pairs.map(([f, t]) => {
+        const r = savedRate(f, t);
+        return `<div class="rate-row"><span>1 ${f}</span><i class="ph-bold ph-arrow-right"></i><strong>${r ? Number(r.toFixed(6)).toLocaleString(undefined, { maximumFractionDigits: 6 }) + ' ' + t : 'not set'}</strong></div>`;
+    }).join('');
+}
+
 function renderAll() {
+    renderRates();
     renderDashboard();
     renderTransactions();
     renderGoals();
@@ -250,6 +276,10 @@ function renderAll() {
     populateWallets();
     populateCategories();
 }
+
+const BAL_KEY = 'activityplus_hide_balance';
+const balHidden = () => localStorage.getItem(BAL_KEY) === '1';
+const mask = t => balHidden() ? '••••••' : t;
 
 function renderDashboard() {
     const c = currentCurrency;
@@ -261,11 +291,14 @@ function renderDashboard() {
     $("#heroGreeting").textContent = name ? "Welcome back, " + name.split(' ')[0] : "Welcome back";
     $("#dashHero").classList.toggle('is-all', all);
 
-    $("#balanceValue").textContent = all ? "Multi-currency" : fmt(currencyBalance(c), c);
+    const eye = $("#toggleBalance i");
+    if (eye) eye.className = balHidden() ? 'ph-bold ph-eye-slash' : 'ph-bold ph-eye';
+
+    $("#balanceValue").textContent = all ? "Multi-currency" : mask(fmt(currencyBalance(c), c));
     $("#balanceLabel").textContent = all ? "Balance per currency is shown below" : curName(c);
-    $("#incomeValue").textContent = all ? "—" : fmt(inc, c);
-    $("#expenseValue").textContent = all ? "—" : fmt(exp, c);
-    $("#savingValue").textContent = all ? "—" : fmt(data.goals.filter(g => g.currency === c).reduce((a, g) => a + Number(g.saved), 0), c);
+    $("#incomeValue").textContent = all ? "—" : mask(fmt(inc, c));
+    $("#expenseValue").textContent = all ? "—" : mask(fmt(exp, c));
+    $("#savingValue").textContent = all ? "—" : mask(fmt(data.goals.filter(g => g.currency === c).reduce((a, g) => a + Number(g.saved), 0), c));
 
     const icons = { USD: 'ph-currency-dollar', SLSH: 'ph-coins', ETB: 'ph-money' };
     $("#currencyCards").innerHTML = CURS.map(cur => {
@@ -273,8 +306,8 @@ function renderDashboard() {
         return `<button type="button" class="cur-card ${cur === c ? 'selected' : ''}" data-pick="${cur}">
             <div class="cur-top"><span class="cur-ico ${cur.toLowerCase()}"><i class="ph-fill ${icons[cur]}"></i></span><small>${cur}</small></div>
             <p>${curName(cur)}</p>
-            <strong>${fmt(currencyBalance(cur), cur)}</strong>
-            <div class="cur-foot"><span class="income-text">+${fmt(ci, cur)}</span><span class="expense-text">−${fmt(ce, cur)}</span></div>
+            <strong>${mask(fmt(currencyBalance(cur), cur))}</strong>
+            <div class="cur-foot"><span class="income-text">+${mask(fmt(ci, cur))}</span><span class="expense-text">−${mask(fmt(ce, cur))}</span></div>
         </button>`;
     }).join('');
     $$('#currencyCards [data-pick]').forEach(b => b.onclick = () => selectDashCurrency(b.dataset.pick));
@@ -285,7 +318,7 @@ function renderDashboard() {
         return `<div class="split-card ${kind.toLowerCase()}">
             <div class="split-head"><span class="split-ico"><i class="ph-fill ${kind === 'Business' ? 'ph-briefcase' : 'ph-user'}"></i></span>
             <div><strong>${kind}</strong><small>${list.length} wallet${list.length === 1 ? '' : 's'}</small></div></div>
-            <div class="split-amts">${CURS.filter(cur => list.some(w => w.currency === cur)).map(cur => `<span>${fmt(tot[cur], cur)}</span>`).join('') || '<span class="muted">No wallets yet</span>'}</div>
+            <div class="split-amts">${CURS.filter(cur => list.some(w => w.currency === cur)).map(cur => `<span>${mask(fmt(tot[cur], cur))}</span>`).join('') || '<span class="muted">No wallets yet</span>'}</div>
         </div>`;
     }).join('');
 
@@ -305,6 +338,11 @@ function renderDashboard() {
         ? data.budgets.slice(0, 4).map(b => budgetHTML(b, true)).join("")
         : `<div class="empty">No budgets yet.</div>`;
 }
+
+$('#toggleBalance').onclick = () => {
+    localStorage.setItem(BAL_KEY, balHidden() ? '0' : '1');
+    renderDashboard();
+};
 
 function selectDashCurrency(cur) {
     currentCurrency = cur;
@@ -623,6 +661,18 @@ $('#transferForm').onsubmit = async e => {
 };
 
 // ============================================================
+// EXCHANGE RATES (Settings)
+// ============================================================
+$('#ratesForm').onsubmit = async e => {
+    e.preventDefault();
+    data.rates = {
+        USD_SLSH: Math.max(0, Number($('#rateUsdSlsh').value) || 0),
+        USD_ETB: Math.max(0, Number($('#rateUsdEtb').value) || 0)
+    };
+    if (await save(true, 'Saving exchange rates...')) toast('Exchange rates saved.');
+};
+
+// ============================================================
 // DASHBOARD QUICK ACTIONS
 // ============================================================
 $('#qaIncome').onclick = () => openTx('income');
@@ -638,6 +688,14 @@ const roundTo = (n, d) => Number.isFinite(n) ? Math.round(n * 10 ** d) / 10 ** d
 
 function exWalletOptions(selected) {
     return data.wallets.map(w => `<option value="${esc(w.name)}" ${w.name === selected ? 'selected' : ''}>${esc(w.name)} · ${curName(w.currency)}${w.kind === 'Business' ? ' (Business)' : ''}</option>`).join('');
+}
+
+function applySavedRate() {
+    const f = exWallet('#exFromWallet'), t = exWallet('#exToWallet');
+    if (!f || !t) return;
+    const r = savedRate(f.currency, t.currency);
+    $('#exRate').value = r ? roundTo(r, 6) : '';
+    exFromRate();
 }
 
 function refreshExchangeLabels() {
@@ -661,6 +719,7 @@ function openExchange() {
     ['#exAmount', '#exRate', '#exReceive'].forEach(i => $(i).value = '');
     $('#exDate').value = new Date().toISOString().slice(0, 10);
     refreshExchangeLabels();
+    applySavedRate();
     $('#exchangeModal').classList.add('show');
 }
 
@@ -673,8 +732,9 @@ $('#exFromWallet').onchange = () => {
         if (alt) $('#exToWallet').value = alt.name;
     }
     refreshExchangeLabels();
+    applySavedRate();
 };
-$('#exToWallet').onchange = refreshExchangeLabels;
+$('#exToWallet').onchange = () => { refreshExchangeLabels(); applySavedRate(); };
 
 const exFromRate = () => {                       // amount x rate -> receive
     const a = Number($('#exAmount').value), r = Number($('#exRate').value);

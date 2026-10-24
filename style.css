@@ -1718,3 +1718,14 @@ form input.big-input { font-size: 22px; font-weight: 800; padding: 16px 18px; le
 @media (max-width: 760px) {
     .table-wrap { height: 60vh; max-height: 60vh; }
 }
+
+/* ---- Hide / show balance eye ---- */
+button.hero-eye { border: 0; color: #fff; cursor: pointer; font-family: inherit; transition: var(--transition); }
+button.hero-eye:hover { background: rgba(255, 255, 255, 0.28); }
+button.hero-eye:active { transform: scale(0.92); }
+
+/* ---- Exchange Rate settings ---- */
+.rates-table { display: grid; gap: 6px; margin-top: 16px; }
+.rate-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; background: var(--bg-subtle); font-size: 13px; font-weight: 600; color: var(--text-soft); }
+.rate-row i { color: var(--muted); }
+.rate-row strong { margin-left: auto; color: var(--text); font-weight: 800; }

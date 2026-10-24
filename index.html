@@ -138,7 +138,7 @@
                         <h2 id="balanceValue" class="hero-amount">0</h2>
                         <small id="balanceLabel" class="hero-sub">All currencies</small>
                     </div>
-                    <div class="hero-badge"><i class="ph-fill ph-wallet"></i></div>
+                    <button type="button" class="hero-badge hero-eye" id="toggleBalance" aria-label="Hide or show balance" title="Hide / show balance"><i class="ph-bold ph-eye"></i></button>
                 </div>
                 <div class="hero-flow">
                     <div class="hero-chip">
@@ -465,6 +465,21 @@
                         </div>
                     </div>
                     <button class="danger-btn full" id="resetData"><i class="ph-bold ph-arrow-counter-clockwise"></i> Reset All Data</button>
+                </div>
+                <div class="panel settings-card rates-card">
+                    <div class="settings-title">
+                        <div class="settings-icon"><i class="ph-fill ph-arrows-clockwise"></i></div>
+                        <div>
+                            <h3>Exchange Rate</h3>
+                            <p class="muted">Set your rates once. The Exchange form fills them in for you.</p>
+                        </div>
+                    </div>
+                    <form id="ratesForm" class="settings-form">
+                        <label>1 US DOLLAR = ? SL SHILLING<input id="rateUsdSlsh" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 5700"></label>
+                        <label>1 US DOLLAR = ? ET BIRR<input id="rateUsdEtb" type="number" min="0" step="any" inputmode="decimal" placeholder="e.g. 130"></label>
+                        <button class="secondary-btn" type="submit"><i class="ph-bold ph-floppy-disk"></i> Save Rates</button>
+                    </form>
+                    <div id="ratesTable" class="rates-table"></div>
                 </div>
                 <div class="panel settings-card report-card">
                     <div class="settings-title">
