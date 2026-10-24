@@ -1540,3 +1540,181 @@ form label { font-size: 13px; font-weight: 700; display: grid; gap: 7px; color: 
 @media (prefers-reduced-motion: reduce) {
     .busy-logo, .busy-logo::after { animation: none; }
 }
+
+/* ============================================================
+   v3 - DASHBOARD REDESIGN, EXCHANGE, PERSONAL / BUSINESS WALLETS
+   ============================================================ */
+
+/* ---- Hero balance card ---- */
+.dash-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 30px;
+    padding: 30px 32px 26px;
+    color: #fff;
+    background:
+        radial-gradient(520px 260px at 92% -20%, rgba(255, 255, 255, 0.22), transparent 62%),
+        radial-gradient(380px 220px at -5% 120%, rgba(255, 255, 255, 0.12), transparent 60%),
+        linear-gradient(135deg, #0fb350 0%, #087a33 60%, #06642b 100%);
+    box-shadow: 0 22px 50px rgba(8, 122, 51, 0.32);
+    margin-bottom: 18px;
+}
+.dash-hero::after {
+    content: "";
+    position: absolute;
+    width: 260px; height: 260px;
+    right: -70px; bottom: -120px;
+    border-radius: 50%;
+    border: 38px solid rgba(255, 255, 255, 0.07);
+    pointer-events: none;
+}
+.hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; position: relative; z-index: 1; }
+.hero-eyebrow { margin: 0 0 14px; font-size: 14px; font-weight: 600; opacity: 0.85; }
+.hero-label { margin: 0 0 4px; font-size: 13px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; opacity: 0.8; }
+.hero-amount { margin: 0; font-size: 46px; font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; word-break: break-word; }
+.dash-hero.is-all .hero-amount { font-size: 34px; letter-spacing: -1px; }
+.hero-sub { display: block; margin-top: 8px; font-size: 13px; font-weight: 500; opacity: 0.8; }
+.hero-badge {
+    width: 54px; height: 54px; flex-shrink: 0;
+    display: grid; place-items: center;
+    border-radius: 18px; font-size: 26px;
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(6px);
+}
+.hero-flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 26px; position: relative; z-index: 1; }
+.hero-chip {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 18px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    min-width: 0;
+}
+.hero-chip small { display: block; font-size: 12px; opacity: 0.8; font-weight: 600; }
+.hero-chip strong { display: block; font-size: 16px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hero-chip > div { min-width: 0; }
+.chip-ico { width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; font-size: 18px; background: rgba(255, 255, 255, 0.2); }
+
+/* ---- Quick actions ---- */
+.quick-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+.qa-btn {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; border-radius: 20px;
+    border: 1px solid var(--line); background: var(--panel);
+    color: var(--text); font: inherit; font-weight: 800; font-size: 14.5px;
+    cursor: pointer; box-shadow: var(--shadow-sm); transition: var(--transition);
+}
+.qa-btn span { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 14px; font-size: 19px; flex-shrink: 0; }
+.qa-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--primary); }
+.qa-btn:active { transform: scale(0.97); }
+.qa-income span { background: var(--primary-soft); color: var(--primary); }
+.qa-expense span { background: var(--red-soft); color: var(--red); }
+.qa-transfer span { background: var(--violet-soft); color: var(--violet); }
+.qa-exchange span { background: var(--amber-soft); color: var(--amber); }
+
+/* ---- Per-currency cards ---- */
+.currency-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.cur-card {
+    text-align: left; font: inherit; color: var(--text);
+    padding: 20px 22px; border-radius: var(--radius);
+    background: var(--panel); border: 1px solid var(--line);
+    box-shadow: var(--shadow); cursor: pointer; transition: var(--transition);
+    display: block; width: 100%;
+}
+.cur-card:hover { transform: translateY(-2px); border-color: var(--primary); }
+.cur-card.selected { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow), var(--shadow); }
+.cur-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.cur-top small { font-weight: 800; color: var(--muted); letter-spacing: 0.6px; }
+.cur-ico { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 14px; font-size: 21px; }
+.cur-ico.usd { background: #e2e8f0; color: #334155; }
+.cur-ico.slsh { background: var(--primary-soft); color: var(--primary); }
+.cur-ico.etb { background: var(--amber-soft); color: var(--amber); }
+body.dark .cur-ico.usd { background: #1f2a37; color: #cbd5e1; }
+.cur-card p { margin: 0 0 4px; font-size: 12.5px; font-weight: 800; letter-spacing: 0.5px; color: var(--text-soft); }
+.cur-card strong { display: block; font-size: 26px; font-weight: 800; letter-spacing: -0.8px; word-break: break-word; }
+.cur-foot { display: flex; gap: 14px; margin-top: 12px; font-size: 12.5px; font-weight: 700; flex-wrap: wrap; }
+
+/* ---- Dashboard side column + wallet split ---- */
+.dash-side { display: flex; flex-direction: column; min-width: 0; }
+.wallet-split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.split-card { padding: 14px; border-radius: 18px; border: 1px solid var(--line); background: var(--bg-subtle); min-width: 0; }
+.split-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.split-head strong { display: block; font-size: 14.5px; font-weight: 800; }
+.split-head small { color: var(--muted); font-size: 12px; font-weight: 600; }
+.split-ico { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 12px; font-size: 18px; background: var(--primary-soft); color: var(--primary); flex-shrink: 0; }
+.split-card.business .split-ico { background: var(--blue-soft); color: var(--blue); }
+.split-amts { display: grid; gap: 3px; font-weight: 800; font-size: 13.5px; overflow-wrap: anywhere; }
+
+/* ---- Exchange styling ---- */
+.tx-icon.exchange { background: var(--amber-soft); color: var(--amber); }
+.pill.exchange { background: var(--amber-soft); color: var(--amber); }
+.exchange-text { color: var(--amber); }
+.ex-summary { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px; border-radius: 16px; background: var(--amber-soft); color: var(--amber); font-weight: 800; font-size: 13px; letter-spacing: 0.4px; }
+.ex-summary i { font-size: 18px; }
+.ex-warn { color: var(--red); }
+.ex-cur { color: var(--muted); font-weight: 700; margin-left: 4px; }
+
+/* ---- Wallet form: big full name + Personal/Business switch ---- */
+form input.big-input { font-size: 22px; font-weight: 800; padding: 16px 18px; letter-spacing: -0.3px; }
+.field { display: grid; gap: 7px; }
+.field-label { font-size: 13px; font-weight: 700; color: var(--text-soft); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; border-radius: 16px; background: var(--bg-subtle); border: 1px solid var(--line); }
+.seg-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 12px; border: 0; border-radius: 12px; background: transparent;
+    color: var(--text-soft); font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; transition: var(--transition);
+}
+.seg-btn.active { background: var(--panel); color: var(--primary); box-shadow: var(--shadow-sm); }
+.seg-btn[data-kind="Business"].active { color: var(--blue); }
+
+/* ---- Wallets page: Personal / Business groups ---- */
+.wallet-groups { display: grid; gap: 30px; }
+.group-head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+.group-head h3 { margin: 0; font-size: 19px; font-weight: 800; letter-spacing: -0.4px; }
+.group-head small { color: var(--muted); font-weight: 600; font-size: 12.5px; }
+.group-ico { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 15px; font-size: 22px; background: var(--primary-soft); color: var(--primary); }
+.group-head.business .group-ico { background: var(--blue-soft); color: var(--blue); }
+.group-chips { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.group-chip { padding: 7px 12px; border-radius: 999px; background: var(--bg-subtle); border: 1px solid var(--line); font-weight: 800; font-size: 12.5px; }
+.wallet-group .empty { margin-top: 0; }
+.kind-badge { padding: 5px 11px; border-radius: 999px; font-size: 11.5px; font-weight: 800; background: var(--primary-soft); color: var(--primary); margin-left: auto; margin-right: 10px; }
+.kind-badge.business { background: var(--blue-soft); color: var(--blue); }
+.wallet-card.kind-business { background: linear-gradient(135deg, var(--panel) 45%, var(--blue-soft) 100%); }
+.wallet-card.kind-business .goal-icon { background: var(--blue-soft); color: var(--blue); }
+.wallet-card .wallet-fullname { font-size: 22px; letter-spacing: -0.5px; margin: 16px 0 4px; }
+
+/* ---- Responsive ---- */
+@media (max-width: 1100px) {
+    .quick-actions { grid-template-columns: repeat(2, 1fr); }
+    .currency-cards { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 760px) {
+    .dash-hero { padding: 22px 20px 20px; border-radius: 26px; }
+    .hero-amount { font-size: 36px; }
+    .dash-hero.is-all .hero-amount { font-size: 28px; }
+    .hero-flow { grid-template-columns: 1fr; gap: 8px; margin-top: 20px; }
+    .hero-chip { padding: 10px 12px; }
+    .quick-actions { gap: 10px; }
+    .qa-btn { padding: 12px; font-size: 13.5px; gap: 10px; }
+    .qa-btn span { width: 34px; height: 34px; font-size: 17px; border-radius: 12px; }
+    .currency-cards { grid-template-columns: 1fr; gap: 12px; }
+    .wallet-split { grid-template-columns: 1fr; }
+    .group-chips { margin-left: 0; width: 100%; }
+    .wallet-groups .wallet-grid { grid-template-columns: 1fr; }
+}
+
+/* ---- Fixed-height tables: stay the same size, scroll down and sideways ---- */
+.table-wrap {
+    height: 560px;
+    max-height: 70vh;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) transparent;
+}
+.table-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
+.table-wrap::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 8px; }
+.table-wrap::-webkit-scrollbar-track { background: transparent; }
+.table-wrap thead th { position: sticky; top: 0; z-index: 3; }
+@media (max-width: 760px) {
+    .table-wrap { height: 60vh; max-height: 60vh; }
+}

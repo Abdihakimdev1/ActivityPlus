@@ -23,12 +23,12 @@ ActivityPlus is a lightweight, framework-free web app for managing personal mone
 | Area | What you get |
 | --- | --- |
 | **Dashboard** | Balance, income, expenses and savings at a glance, with recent activity |
-| **Transactions** | Add, edit, delete, search and filter by category; transfers between wallets |
-| **Wallets** | Multiple wallets with live balances |
+| **Transactions** | Income, Expense, Transfer and **Exchange** (convert between currencies with a rate); search and filter |
+| **Wallets** | **Personal** and **Business** wallets, each with a full name and live balance |
 | **Budgets** | Per-category budgets with spending progress |
 | **Savings Goals** | Create goals and add to them as you save |
 | **Analytics** | Spending by category and income vs. expense summaries |
-| **Multi-currency** | USD, SLSH and ETB |
+| **Multi-currency** | US Dollar (USD), SL Shilling (SLSH), ET Birr (ETB) |
 | **Reports & Backup** | PDF report, CSV export, JSON backup and restore |
 | **Security** | Email/password login, plus PIN and password confirmation before deleting or resetting data |
 | **Experience** | Responsive layout (desktop, tablet, mobile), dark mode, loading states on every save/load |
@@ -97,6 +97,8 @@ Then open `http://localhost:8080`.
    ```
 
 4. In **Authentication**, create your user (email + password).
+
+> **No SQL change is needed for wallet categories or exchanges.** They are stored inside the existing `data` JSON column. Older wallets without a category are treated as **Personal** automatically and are upgraded the next time data is saved.
 
 > Only use the **publishable (anon)** key in the frontend. Never put a service-role key in client code.
 

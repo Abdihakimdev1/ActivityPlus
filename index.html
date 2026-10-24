@@ -130,38 +130,48 @@
 
         <!-- Dashboard -->
         <section id="dashboard" class="section active-section">
+            <div class="dash-hero" id="dashHero">
+                <div class="hero-top">
+                    <div>
+                        <p class="hero-eyebrow" id="heroGreeting">Welcome back</p>
+                        <p class="hero-label">Total Balance</p>
+                        <h2 id="balanceValue" class="hero-amount">0</h2>
+                        <small id="balanceLabel" class="hero-sub">All currencies</small>
+                    </div>
+                    <div class="hero-badge"><i class="ph-fill ph-wallet"></i></div>
+                </div>
+                <div class="hero-flow">
+                    <div class="hero-chip">
+                        <span class="chip-ico up"><i class="ph-bold ph-arrow-down-left"></i></span>
+                        <div><small>Income</small><strong id="incomeValue">0</strong></div>
+                    </div>
+                    <div class="hero-chip">
+                        <span class="chip-ico down"><i class="ph-bold ph-arrow-up-right"></i></span>
+                        <div><small>Expenses</small><strong id="expenseValue">0</strong></div>
+                    </div>
+                    <div class="hero-chip">
+                        <span class="chip-ico sav"><i class="ph-fill ph-piggy-bank"></i></span>
+                        <div><small>Savings</small><strong id="savingValue">0</strong></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-actions">
+                <button class="qa-btn qa-income" id="qaIncome"><span><i class="ph-bold ph-arrow-down-left"></i></span>Income</button>
+                <button class="qa-btn qa-expense" id="qaExpense"><span><i class="ph-bold ph-arrow-up-right"></i></span>Expense</button>
+                <button class="qa-btn qa-transfer" id="qaTransfer"><span><i class="ph-bold ph-arrows-left-right"></i></span>Transfer</button>
+                <button class="qa-btn qa-exchange" id="qaExchange"><span><i class="ph-bold ph-arrows-clockwise"></i></span>Exchange</button>
+            </div>
+
             <div class="currency-tabs">
                 <button class="currency active" data-currency="ALL">All currencies</button>
-                <button class="currency" data-currency="SLSH">SLSH</button>
-                <button class="currency" data-currency="USD">USD</button>
-                <button class="currency" data-currency="ETB">ETB</button>
+                <button class="currency" data-currency="USD">US DOLLAR</button>
+                <button class="currency" data-currency="SLSH">SL SHILLING</button>
+                <button class="currency" data-currency="ETB">ET BIRR</button>
             </div>
-            <div class="cards">
-                <div class="stat-card">
-                    <div class="stat-icon"><i class="ph-fill ph-wallet"></i></div>
-                    <p>Total Balance</p>
-                    <h2 id="balanceValue">0</h2>
-                    <small id="balanceLabel">All currencies</small>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon"><i class="ph-bold ph-arrow-up"></i></div>
-                    <p>Total Income</p>
-                    <h2 id="incomeValue">0</h2>
-                    <small>This period</small>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon"><i class="ph-bold ph-arrow-down"></i></div>
-                    <p>Total Expenses</p>
-                    <h2 id="expenseValue">0</h2>
-                    <small>This period</small>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon"><i class="ph-fill ph-piggy-bank"></i></div>
-                    <p>Total Savings</p>
-                    <h2 id="savingValue">0</h2>
-                    <small>Across goals</small>
-                </div>
-            </div>
+
+            <div id="currencyCards" class="currency-cards"></div>
+
             <div class="grid-2">
                 <div class="panel">
                     <div class="panel-head">
@@ -174,16 +184,29 @@
                     </div>
                     <div id="recentTransactions" class="transaction-list"></div>
                 </div>
-                <div class="panel">
-                    <div class="panel-head">
-                        <span class="panel-icon"><i class="ph-fill ph-target"></i></span>
-                        <div>
-                            <h3>Budget Snapshot</h3>
-                            <p>Current spending limits</p>
+                <div class="dash-side">
+                    <div class="panel">
+                        <div class="panel-head">
+                            <span class="panel-icon"><i class="ph-fill ph-wallet"></i></span>
+                            <div>
+                                <h3>Wallets</h3>
+                                <p>Personal and Business</p>
+                            </div>
+                            <button class="text-btn" data-go="wallets">Manage</button>
                         </div>
-                        <button class="text-btn" data-go="budgets">Manage</button>
+                        <div id="walletSplit" class="wallet-split"></div>
                     </div>
-                    <div id="budgetPreview"></div>
+                    <div class="panel">
+                        <div class="panel-head">
+                            <span class="panel-icon"><i class="ph-fill ph-target"></i></span>
+                            <div>
+                                <h3>Budget Snapshot</h3>
+                                <p>Current spending limits</p>
+                            </div>
+                            <button class="text-btn" data-go="budgets">Manage</button>
+                        </div>
+                        <div id="budgetPreview"></div>
+                    </div>
                 </div>
             </div>
             <div class="panel">
@@ -220,12 +243,13 @@
         <section id="transactions" class="section">
             <div class="section-toolbar">
                 <div>
-                    <p>Track every income and expense.</p>
+                    <p>Track every income, expense, transfer and exchange.</p>
                 </div>
                 <div class="button-group">
                     <button class="primary-btn" id="addIncome"><i class="ph-bold ph-plus"></i> Income</button>
                     <button class="danger-btn" id="addExpense"><i class="ph-bold ph-minus"></i> Expense</button>
                     <button class="secondary-btn" id="addTransfer"><i class="ph-bold ph-arrows-left-right"></i> Transfer</button>
+                    <button class="secondary-btn" id="addExchange"><i class="ph-bold ph-arrows-clockwise"></i> Exchange</button>
                 </div>
             </div>
             <div class="panel">
@@ -236,6 +260,7 @@
                         <option value="income">Income</option>
                         <option value="expense">Expense</option>
                         <option value="transfer">Transfer</option>
+                        <option value="exchange">Exchange</option>
                     </select>
                     <select id="categoryFilter">
                         <option value="all">All categories</option>
@@ -267,9 +292,9 @@
                     <p>Understand where your money goes.</p>
                 </div>
                 <select id="analyticsCurrency" class="currency">
-                    <option>USD</option>
-                    <option>SLSH</option>
-                    <option>ETB</option>
+                    <option value="USD">US DOLLAR</option>
+                    <option value="SLSH">SL SHILLING</option>
+                    <option value="ETB">ET BIRR</option>
                 </select>
             </div>
             <div class="cards three">
@@ -336,11 +361,11 @@
         <section id="wallets" class="section">
             <div class="section-toolbar">
                 <div>
-                    <p>See where your money is stored.</p>
+                    <p>Personal and Business wallets, with live balances.</p>
                 </div>
                 <button class="primary-btn" id="addWallet"><i class="ph-bold ph-plus"></i> New Wallet</button>
             </div>
-            <div id="walletGrid" class="wallet-grid"></div>
+            <div id="walletGrid" class="wallet-groups"></div>
         </section>
 
         <!-- Settings -->
@@ -488,9 +513,9 @@
                     <label>Amount<input id="txAmount" type="number" min="0" step="any" required></label>
                     <label>Currency
                         <select id="txCurrency">
-                            <option>USD</option>
-                            <option>SLSH</option>
-                            <option>ETB</option>
+                            <option value="USD">US DOLLAR</option>
+                            <option value="SLSH">SL SHILLING</option>
+                            <option value="ETB">ET BIRR</option>
                         </select>
                     </label>
                 </div>
@@ -523,9 +548,9 @@
                 <label>Amount<input id="transferAmount" type="number" min="0.01" step="0.01" inputmode="decimal" required></label>
                 <label>Currency
                     <select id="transferCurrency">
-                        <option>SLSH</option>
-                        <option>USD</option>
-                        <option>ETB</option>
+                        <option value="SLSH">SL SHILLING</option>
+                        <option value="USD">US DOLLAR</option>
+                        <option value="ETB">ET BIRR</option>
                     </select>
                 </label>
                 <div class="form-row">
@@ -548,9 +573,9 @@
                     <label>Target<input id="goalTarget" type="number" min="1" required></label>
                     <label>Currency
                         <select id="goalCurrency">
-                            <option>USD</option>
-                            <option>SLSH</option>
-                            <option>ETB</option>
+                            <option value="USD">US DOLLAR</option>
+                            <option value="SLSH">SL SHILLING</option>
+                            <option value="ETB">ET BIRR</option>
                         </select>
                     </label>
                 </div>
@@ -565,11 +590,22 @@
             <button class="close" data-close="walletModal"><i class="ph-bold ph-x"></i></button>
             <h2>New Wallet</h2>
             <form id="walletForm">
+                <label>Full name
+                    <input id="walletFullName" class="big-input" required autocomplete="name" placeholder="Full name">
+                </label>
+                <div class="field">
+                    <span class="field-label">Wallet category</span>
+                    <div class="seg" id="walletKindSeg">
+                        <button type="button" class="seg-btn active" data-kind="Personal"><i class="ph-fill ph-user"></i> Personal</button>
+                        <button type="button" class="seg-btn" data-kind="Business"><i class="ph-fill ph-briefcase"></i> Business</button>
+                    </div>
+                    <input type="hidden" id="walletKind" value="Personal">
+                </div>
                 <label>Currency
                     <select id="walletCurrency">
-                        <option>USD</option>
-                        <option>SLSH</option>
-                        <option>ETB</option>
+                        <option value="USD">US DOLLAR</option>
+                        <option value="SLSH">SL SHILLING</option>
+                        <option value="ETB">ET BIRR</option>
                     </select>
                 </label>
                 <label>Wallet / Service<select id="walletPreset"></select></label>
@@ -583,6 +619,31 @@
                     </select>
                 </label>
                 <button class="primary-btn full" type="submit"><i class="ph-bold ph-wallet"></i> Create Wallet</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="exchangeModal">
+        <div class="modal-box">
+            <button class="close" data-close="exchangeModal"><i class="ph-bold ph-x"></i></button>
+            <h2>Currency Exchange</h2>
+            <form id="exchangeForm">
+                <div class="form-row">
+                    <label>From wallet<select id="exFromWallet"></select></label>
+                    <label>To wallet<select id="exToWallet"></select></label>
+                </div>
+                <div class="ex-summary" id="exSummary"></div>
+                <label><span>Amount you send <b id="exFromCur" class="ex-cur"></b></span>
+                    <input id="exAmount" type="number" min="0" step="any" inputmode="decimal" required>
+                </label>
+                <label><span>Exchange rate <b id="exRateHint" class="ex-cur"></b></span>
+                    <input id="exRate" type="number" min="0" step="any" inputmode="decimal" required>
+                </label>
+                <label><span>Amount you receive <b id="exToCur" class="ex-cur"></b></span>
+                    <input id="exReceive" type="number" min="0" step="any" inputmode="decimal" required>
+                </label>
+                <label>Date<input id="exDate" type="date" required></label>
+                <button class="primary-btn full" type="submit"><i class="ph-bold ph-arrows-clockwise"></i> Exchange</button>
             </form>
         </div>
     </div>
@@ -607,9 +668,9 @@
                     <label>Monthly limit<input id="budgetLimit" type="number" min="1" required></label>
                     <label>Currency
                         <select id="budgetCurrency">
-                            <option>USD</option>
-                            <option>SLSH</option>
-                            <option>ETB</option>
+                            <option value="USD">US DOLLAR</option>
+                            <option value="SLSH">SL SHILLING</option>
+                            <option value="ETB">ET BIRR</option>
                         </select>
                     </label>
                 </div>

@@ -97,9 +97,9 @@ const defaultData = {
     transactions: [],
     goals: [],
     wallets: [
-        { id: 1, name: "Cash", type: "Cash", currency: "USD" },
-        { id: 2, name: "E-Wallet", type: "E-Wallet", currency: "SLSH" },
-        { id: 3, name: "Bank", type: "Bank", currency: "ETB" }
+        { id: 1, name: "Cash", fullName: "", kind: "Personal", type: "Cash", currency: "USD" },
+        { id: 2, name: "E-Wallet", fullName: "", kind: "Personal", type: "E-Wallet", currency: "SLSH" },
+        { id: 3, name: "Bank", fullName: "", kind: "Personal", type: "Bank", currency: "ETB" }
     ],
     budgets: []
 };
@@ -115,12 +115,19 @@ let currentCurrency = "ALL";
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
+const normalizeWallet = w => ({
+    ...w,
+    kind: w.kind === "Business" ? "Business" : "Personal",   // older wallets default to Personal
+    fullName: w.fullName || ""
+});
+
 const normalizeData = (value) => {
     const x = value && typeof value === "object" ? value : {};
+    const wallets = Array.isArray(x.wallets) && x.wallets.length ? x.wallets : JSON.parse(JSON.stringify(defaultData.wallets));
     return {
         transactions: Array.isArray(x.transactions) ? x.transactions : [],
         goals: Array.isArray(x.goals) ? x.goals : [],
-        wallets: Array.isArray(x.wallets) && x.wallets.length ? x.wallets : JSON.parse(JSON.stringify(defaultData.wallets)),
+        wallets: wallets.map(normalizeWallet),
         budgets: Array.isArray(x.budgets) ? x.budgets : []
     };
 };
@@ -187,6 +194,35 @@ const loadRemoteData = async () => {
 // ============================================================
 const fmt = (n, c) => ({ USD: "$", SLSH: "SLSH ", ETB: "ETB " }[c] || "") + Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
+const CURS = ["USD", "SLSH", "ETB"];
+const CUR_NAMES = { USD: "US DOLLAR", SLSH: "SL SHILLING", ETB: "ET BIRR" };
+const curName = c => CUR_NAMES[c] || c;
+
+// Balance of one wallet: income/expense/transfer plus both sides of an exchange
+function walletBal(w) {
+    return data.transactions.reduce((a, t) => {
+        const amt = Number(t.amount) || 0;
+        if (t.type === 'income' && t.wallet === w.name) return a + amt;
+        if (t.type === 'expense' && t.wallet === w.name) return a - amt;
+        if (t.type === 'transfer') {
+            if (t.from === w.name) return a - amt;
+            if (t.to === w.name) return a + amt;
+        }
+        if (t.type === 'exchange') {
+            if (t.from === w.name) return a - amt;
+            if (t.to === w.name) return a + (Number(t.toAmount) || 0);
+        }
+        return a;
+    }, 0);
+}
+
+const currencyBalance = c => data.wallets.filter(w => w.currency === c).reduce((a, w) => a + walletBal(w), 0);
+const kindTotals = kind => {
+    const out = { USD: 0, SLSH: 0, ETB: 0 };
+    data.wallets.filter(w => (w.kind || 'Personal') === kind).forEach(w => { out[w.currency] = (out[w.currency] || 0) + walletBal(w); });
+    return out;
+};
+
 const esc = s => String(s ?? "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m]));
 
 const toast = msg => {
@@ -217,14 +253,41 @@ function renderAll() {
 
 function renderDashboard() {
     const c = currentCurrency;
-    const inc = data.transactions.filter(t => t.type === 'income' && (!c || c === 'ALL' || t.currency === c)).reduce((a, t) => a + Number(t.amount), 0);
-    const exp = data.transactions.filter(t => t.type === 'expense' && (!c || c === 'ALL' || t.currency === c)).reduce((a, t) => a + Number(t.amount), 0);
+    const all = !c || c === 'ALL';
+    const inc = data.transactions.filter(t => t.type === 'income' && (all || t.currency === c)).reduce((a, t) => a + Number(t.amount), 0);
+    const exp = data.transactions.filter(t => t.type === 'expense' && (all || t.currency === c)).reduce((a, t) => a + Number(t.amount), 0);
 
-    $("#balanceValue").textContent = c === 'ALL' ? "Multiple" : fmt(inc - exp, c);
-    $("#balanceLabel").textContent = c === 'ALL' ? "All currencies" : "Current currency: " + c;
-    $("#incomeValue").textContent = c === 'ALL' ? "Multiple" : fmt(inc, c);
-    $("#expenseValue").textContent = c === 'ALL' ? "Multiple" : fmt(exp, c);
-    $("#savingValue").textContent = c === 'ALL' ? "Multiple" : fmt(data.goals.filter(g => g.currency === c).reduce((a, g) => a + Number(g.saved), 0), c);
+    const name = (currentUser?.user_metadata?.full_name || currentUser?.user_metadata?.name || '').trim();
+    $("#heroGreeting").textContent = name ? "Welcome back, " + name.split(' ')[0] : "Welcome back";
+    $("#dashHero").classList.toggle('is-all', all);
+
+    $("#balanceValue").textContent = all ? "Multi-currency" : fmt(currencyBalance(c), c);
+    $("#balanceLabel").textContent = all ? "Balance per currency is shown below" : curName(c);
+    $("#incomeValue").textContent = all ? "—" : fmt(inc, c);
+    $("#expenseValue").textContent = all ? "—" : fmt(exp, c);
+    $("#savingValue").textContent = all ? "—" : fmt(data.goals.filter(g => g.currency === c).reduce((a, g) => a + Number(g.saved), 0), c);
+
+    const icons = { USD: 'ph-currency-dollar', SLSH: 'ph-coins', ETB: 'ph-money' };
+    $("#currencyCards").innerHTML = CURS.map(cur => {
+        const ci = txAmount('income', cur), ce = txAmount('expense', cur);
+        return `<button type="button" class="cur-card ${cur === c ? 'selected' : ''}" data-pick="${cur}">
+            <div class="cur-top"><span class="cur-ico ${cur.toLowerCase()}"><i class="ph-fill ${icons[cur]}"></i></span><small>${cur}</small></div>
+            <p>${curName(cur)}</p>
+            <strong>${fmt(currencyBalance(cur), cur)}</strong>
+            <div class="cur-foot"><span class="income-text">+${fmt(ci, cur)}</span><span class="expense-text">−${fmt(ce, cur)}</span></div>
+        </button>`;
+    }).join('');
+    $$('#currencyCards [data-pick]').forEach(b => b.onclick = () => selectDashCurrency(b.dataset.pick));
+
+    $("#walletSplit").innerHTML = ['Personal', 'Business'].map(kind => {
+        const list = data.wallets.filter(w => (w.kind || 'Personal') === kind);
+        const tot = kindTotals(kind);
+        return `<div class="split-card ${kind.toLowerCase()}">
+            <div class="split-head"><span class="split-ico"><i class="ph-fill ${kind === 'Business' ? 'ph-briefcase' : 'ph-user'}"></i></span>
+            <div><strong>${kind}</strong><small>${list.length} wallet${list.length === 1 ? '' : 's'}</small></div></div>
+            <div class="split-amts">${CURS.filter(cur => list.some(w => w.currency === cur)).map(cur => `<span>${fmt(tot[cur], cur)}</span>`).join('') || '<span class="muted">No wallets yet</span>'}</div>
+        </div>`;
+    }).join('');
 
     const recent = [...data.transactions].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 6);
     $("#recentTransactions").innerHTML = recent.length
@@ -243,20 +306,34 @@ function renderDashboard() {
         : `<div class="empty">No budgets yet.</div>`;
 }
 
+function selectDashCurrency(cur) {
+    currentCurrency = cur;
+    $$('.currency-tabs .currency').forEach(x => x.classList.toggle('active', x.dataset.currency === cur));
+    renderDashboard();
+}
+
+// --- transaction display helpers (income / expense / transfer / exchange) ---
+const TX_LABEL = { income: 'Income', expense: 'Expense', transfer: 'Transfer', exchange: 'Exchange' };
+const TX_SIGN = { income: '+', expense: '−', transfer: '↔', exchange: '⇄' };
+const TX_CLASS = { income: 'income-text', expense: 'expense-text', transfer: 'transfer-text', exchange: 'exchange-text' };
+const txAmountText = tx => tx.type === 'exchange'
+    ? `${fmt(tx.amount, tx.currency)} → ${fmt(tx.toAmount, tx.toCurrency)}`
+    : `${TX_SIGN[tx.type] || ''}${fmt(tx.amount, tx.currency)}`;
+
 function txRow(tx) {
-    const ico = tx.type === 'income' ? 'ph-arrow-down' : tx.type === 'expense' ? 'ph-shopping-cart' : 'ph-arrow-right';
-    const label = tx.type === 'income' ? 'Income' : tx.type === 'expense' ? 'Expense' : 'Transfer';
+    const ico = { income: 'ph-arrow-down', expense: 'ph-shopping-cart', transfer: 'ph-arrow-right', exchange: 'ph-arrows-clockwise' }[tx.type] || 'ph-arrow-right';
+    const where = tx.wallet || (tx.from + " → " + tx.to);
     return `<div class="tx-item">
         <div class="tx-icon ${esc(tx.type)}"><i class="ph-fill ${ico}"></i></div>
         <div class="tx-info">
             <strong>${esc(tx.description)}</strong>
-            <small>${esc(tx.category || 'Transfer')} · ${esc(tx.wallet || tx.from + " → " + tx.to)}</small>
+            <small>${esc(tx.category || TX_LABEL[tx.type])} · ${esc(where)}</small>
         </div>
-        <div class="amount ${tx.type === 'income' ? 'income-text' : tx.type === 'expense' ? 'expense-text' : 'transfer-text'}">
-            ${tx.type === 'income' ? '+' : tx.type === 'expense' ? '−' : '↔'}${fmt(tx.amount, tx.currency)}
+        <div class="amount ${TX_CLASS[tx.type] || ''}">
+            ${txAmountText(tx)}
             <small class="tx-date">${esc(tx.date)}</small>
         </div>
-        <span class="pill ${esc(tx.type)}">${label}</span>
+        <span class="pill ${esc(tx.type)}">${TX_LABEL[tx.type] || esc(tx.type)}</span>
     </div>`;
 }
 
@@ -278,7 +355,7 @@ function renderTransactions() {
             <td>${esc(t.category || 'Transfer')}</td>
             <td>${esc(t.wallet || `${t.from} → ${t.to}`)}</td>
             <td>${t.date}</td>
-            <td class="${t.type === 'income' ? 'income-text' : t.type === 'expense' ? 'expense-text' : 'transfer-text'}"><strong>${t.type === 'income' ? '+' : t.type === 'expense' ? '−' : '↔'}${fmt(t.amount, t.currency)}</strong></td>
+            <td class="${TX_CLASS[t.type] || ''}"><strong>${txAmountText(t)}</strong></td>
             <td><div class="row-actions">
                 <button class="small-btn" onclick="editTx(${t.id})"><i class="ph-bold ph-pencil-simple"></i></button>
                 <button class="small-btn delete" onclick="deleteTx(${t.id})"><i class="ph-bold ph-trash"></i></button>
@@ -309,21 +386,38 @@ function goalHTML(g) {
     </div>`;
 }
 
+function walletCardHTML(w) {
+    const kind = w.kind || 'Personal';
+    const mine = data.transactions.filter(t => t.wallet === w.name && t.currency === w.currency);
+    const income = mine.filter(t => t.type === 'income').reduce((a, t) => a + Number(t.amount), 0);
+    const spent = mine.filter(t => t.type === 'expense').reduce((a, t) => a + Number(t.amount), 0);
+    return `<div class="wallet-card kind-${kind.toLowerCase()}">
+        <div class="wallet-top">
+            <div class="goal-icon"><i class="ph-fill ${kind === 'Business' ? 'ph-briefcase' : 'ph-user'}"></i></div>
+            <span class="kind-badge ${kind.toLowerCase()}">${kind}</span>
+            <button class="small-btn delete" onclick="deleteWallet(${w.id})"><i class="ph-bold ph-trash"></i></button>
+        </div>
+        <h3 class="wallet-fullname">${esc(w.fullName || w.name)}</h3>
+        <div class="muted">${esc(w.name)} · ${esc(w.type || 'Wallet')} · ${curName(w.currency)}</div>
+        <div class="wallet-balance">${fmt(walletBal(w), w.currency)}</div>
+        <div class="muted">Income ${fmt(income, w.currency)} · Expenses ${fmt(spent, w.currency)}</div>
+    </div>`;
+}
+
 function renderWallets() {
-    $("#walletGrid").innerHTML = data.wallets.map(w => {
-        const wi = data.transactions.filter(t => t.currency === w.currency && (t.wallet === w.name || t.from === w.name || t.to === w.name));
-        const bal = wi.reduce((a, t) => a + (t.type === 'income' && t.wallet === w.name ? Number(t.amount) : t.type === 'expense' && t.wallet === w.name ? -Number(t.amount) : t.type === 'transfer' && t.from === w.name ? -Number(t.amount) : t.type === 'transfer' && t.to === w.name ? Number(t.amount) : 0), 0);
-        return `<div class="wallet-card">
-            <div class="wallet-top">
-                <div class="goal-icon"><i class="ph-fill ph-wallet"></i></div>
-                <button class="small-btn delete" onclick="deleteWallet(${w.id})"><i class="ph-bold ph-trash"></i></button>
+    $("#walletGrid").innerHTML = ['Personal', 'Business'].map(kind => {
+        const list = data.wallets.filter(w => (w.kind || 'Personal') === kind);
+        const tot = kindTotals(kind);
+        const chips = CURS.filter(c => list.some(w => w.currency === c)).map(c => `<span class="group-chip">${fmt(tot[c], c)}</span>`).join('');
+        return `<div class="wallet-group">
+            <div class="group-head ${kind.toLowerCase()}">
+                <span class="group-ico"><i class="ph-fill ${kind === 'Business' ? 'ph-briefcase' : 'ph-user'}"></i></span>
+                <div><h3>${kind} Wallets</h3><small>${list.length} wallet${list.length === 1 ? '' : 's'}</small></div>
+                <div class="group-chips">${chips}</div>
             </div>
-            <h3>${esc(w.name)}</h3>
-            <div class="muted">${esc(w.type || 'Wallet')} · ${w.currency}</div>
-            <div class="wallet-balance">${fmt(bal, w.currency)}</div>
-            <div class="muted">Income ${fmt(wi.filter(t => t.type === 'income').reduce((a, t) => a + Number(t.amount), 0), w.currency)} · Expenses ${fmt(wi.filter(t => t.type === 'expense').reduce((a, t) => a + Number(t.amount), 0), w.currency)}</div>
+            ${list.length ? `<div class="wallet-grid">${list.map(walletCardHTML).join('')}</div>` : `<div class="panel empty">No ${kind} wallets yet. Tap “New Wallet” and choose ${kind}.</div>`}
         </div>`;
-    }).join("");
+    }).join('');
 }
 
 function renderBudgets() {
@@ -405,7 +499,7 @@ function populateWallets() {
 function populateCategories() {
     const cats = [...new Set([...CATS, ...data.transactions.map(t => t.category).filter(Boolean)])];
     $("#categoryFilter").innerHTML = '<option value="all">All categories</option>' + cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
-    $("#budgetCategory").innerHTML = cats.filter(c => c !== 'Salary').map(c => `<option>${esc(c)}</option>`).join('');
+    $("#budgetCategory").innerHTML = cats.filter(c => !['Salary', 'Transfer', 'Exchange'].includes(c)).map(c => `<option>${esc(c)}</option>`).join('');
 }
 
 // ============================================================
@@ -468,6 +562,7 @@ $$('[data-close]').forEach(b => b.onclick = () => closeModal(b.dataset.close));
 window.editTx = id => {
     const t = data.transactions.find(x => x.id === id);
     if (t?.type === 'transfer') return toast('Transfers cannot be edited here. Delete and create a new transfer.');
+    if (t?.type === 'exchange') return toast('Exchanges cannot be edited here. Delete and create a new exchange.');
     openTx(t.type, id);
 };
 
@@ -528,6 +623,98 @@ $('#transferForm').onsubmit = async e => {
 };
 
 // ============================================================
+// DASHBOARD QUICK ACTIONS
+// ============================================================
+$('#qaIncome').onclick = () => openTx('income');
+$('#qaExpense').onclick = () => openTx('expense');
+$('#qaTransfer').onclick = () => $('#addTransfer').click();
+$('#qaExchange').onclick = () => openExchange();
+
+// ============================================================
+// EXCHANGE (move money between two wallets of different currencies)
+// ============================================================
+const exWallet = id => data.wallets.find(w => w.name === $(id).value);
+const roundTo = (n, d) => Number.isFinite(n) ? Math.round(n * 10 ** d) / 10 ** d : 0;
+
+function exWalletOptions(selected) {
+    return data.wallets.map(w => `<option value="${esc(w.name)}" ${w.name === selected ? 'selected' : ''}>${esc(w.name)} · ${curName(w.currency)}${w.kind === 'Business' ? ' (Business)' : ''}</option>`).join('');
+}
+
+function refreshExchangeLabels() {
+    const f = exWallet('#exFromWallet'), t = exWallet('#exToWallet');
+    if (!f || !t) return;
+    $('#exFromCur').textContent = '(' + f.currency + ')';
+    $('#exToCur').textContent = '(' + t.currency + ')';
+    $('#exRateHint').textContent = `(1 ${f.currency} = ? ${t.currency})`;
+    $('#exSummary').innerHTML = f.currency === t.currency
+        ? `<span class="ex-warn">Choose wallets with two different currencies.</span>`
+        : `<span>${curName(f.currency)}</span><i class="ph-bold ph-arrows-clockwise"></i><span>${curName(t.currency)}</span>`;
+}
+
+function openExchange() {
+    const curs = new Set(data.wallets.map(w => w.currency));
+    if (data.wallets.length < 2 || curs.size < 2) return toast('Create wallets in two different currencies first.');
+    const first = data.wallets[0];
+    const other = data.wallets.find(w => w.currency !== first.currency);
+    $('#exFromWallet').innerHTML = exWalletOptions(first.name);
+    $('#exToWallet').innerHTML = exWalletOptions(other.name);
+    ['#exAmount', '#exRate', '#exReceive'].forEach(i => $(i).value = '');
+    $('#exDate').value = new Date().toISOString().slice(0, 10);
+    refreshExchangeLabels();
+    $('#exchangeModal').classList.add('show');
+}
+
+$('#addExchange').onclick = openExchange;
+
+$('#exFromWallet').onchange = () => {
+    const f = exWallet('#exFromWallet'), t = exWallet('#exToWallet');
+    if (f && t && f.currency === t.currency) {
+        const alt = data.wallets.find(w => w.currency !== f.currency);
+        if (alt) $('#exToWallet').value = alt.name;
+    }
+    refreshExchangeLabels();
+};
+$('#exToWallet').onchange = refreshExchangeLabels;
+
+const exFromRate = () => {                       // amount x rate -> receive
+    const a = Number($('#exAmount').value), r = Number($('#exRate').value);
+    if (a > 0 && r > 0) $('#exReceive').value = roundTo(a * r, 2);
+};
+$('#exAmount').addEventListener('input', exFromRate);
+$('#exRate').addEventListener('input', exFromRate);
+$('#exReceive').addEventListener('input', () => {   // receive / amount -> rate
+    const a = Number($('#exAmount').value), got = Number($('#exReceive').value);
+    if (a > 0 && got > 0) $('#exRate').value = roundTo(got / a, 6);
+});
+
+$('#exchangeForm').onsubmit = async e => {
+    e.preventDefault();
+    const f = exWallet('#exFromWallet'), t = exWallet('#exToWallet');
+    if (!f || !t) return toast('Choose both wallets.');
+    if (f.currency === t.currency) return toast('Exchange needs two different currencies.');
+    const amount = Number($('#exAmount').value);
+    const toAmount = Number($('#exReceive').value);
+    if (!(amount > 0) || !(toAmount > 0)) return toast('Enter the amount and the exchange rate.');
+    if (amount > walletBal(f) && !confirm(`${f.name} only has ${fmt(walletBal(f), f.currency)}. Exchange anyway?`)) return;
+    data.transactions.push({
+        id: Date.now(),
+        type: 'exchange',
+        description: `Exchange ${f.currency} → ${t.currency}`,
+        amount,
+        currency: f.currency,
+        toAmount,
+        toCurrency: t.currency,
+        rate: roundTo(toAmount / amount, 6),
+        category: 'Exchange',
+        from: f.name,
+        to: t.name,
+        date: $('#exDate').value
+    });
+    closeModal('exchangeModal');
+    if (await save(true, 'Recording exchange...')) toast('Exchange recorded.');
+};
+
+// ============================================================
 // GOALS
 // ============================================================
 $('#addGoal').onclick = () => $('#goalModal').classList.add('show');
@@ -580,14 +767,18 @@ $('#walletForm').onsubmit = async e => {
     e.preventDefault();
     const name = $('#walletName').value.trim();
     const currency = $('#walletCurrency').value;
-    if (data.wallets.some(w => w.name.toLowerCase() === name.toLowerCase())) return toast('Wallet already exists.');
+    if (data.wallets.some(w => w.name.toLowerCase() === name.toLowerCase())) return toast('A wallet with this name already exists. Change the wallet name.');
     data.wallets.push({
         id: Date.now(),
         name,
+        fullName: $('#walletFullName').value.trim(),
+        kind: $('#walletKind').value === 'Business' ? 'Business' : 'Personal',
         type: $('#walletType').value,
         currency
     });
     e.target.reset();
+    setWalletKind('Personal');
+    updateWalletPresetOptions();
     closeModal('walletModal');
     if (await save(true, 'Creating wallet...')) toast('Wallet created.');
 };
@@ -669,8 +860,8 @@ $('#exportJson').onclick = () => download('ActivityPlus-backup.json', JSON.strin
 
 $('#exportCsv').onclick = () => {
     const rows = [
-        ['Date', 'Type', 'Description', 'Category', 'Wallet/From', 'To', 'Currency', 'Amount'],
-        ...data.transactions.map(t => [t.date, t.type, t.description, t.category || '', t.wallet || t.from || '', t.to || '', t.currency, t.amount])
+        ['Date', 'Type', 'Description', 'Category', 'Wallet/From', 'To', 'Currency', 'Amount', 'To Currency', 'To Amount'],
+        ...data.transactions.map(t => [t.date, t.type, t.description, t.category || '', t.wallet || t.from || '', t.to || '', t.currency, t.amount, t.toCurrency || '', t.toAmount || ''])
     ];
     download('ActivityPlus-transactions.csv', rows.map(r => r.map(v => '"' + String(v).replaceAll('"', '""') + '"').join(',')).join('\n'), 'text/csv');
 };
@@ -688,7 +879,7 @@ $('#importJson').onchange = e => {
             e.target.value = '';
             return toast('Invalid ActivityPlus backup.');
         }
-        data = { ...defaultData, ...x };
+        data = normalizeData({ ...defaultData, ...x });
         if (await save(true, 'Importing backup...')) toast('Backup restored.');
         e.target.value = '';
     };
@@ -820,6 +1011,7 @@ $("#profileForm").onsubmit = async e => {
     const name = $("#profileName").value.trim();
     const { error } = await withBusy("Saving profile...", () => sb.auth.updateUser({ data: { full_name: name } }));
     toast(error ? error.message : "Profile updated.");
+    if (!error && currentUser) { currentUser.user_metadata = { ...(currentUser.user_metadata || {}), full_name: name }; renderDashboard(); }
 };
 
 $("#passwordForm").onsubmit = async e => {
@@ -859,9 +1051,18 @@ function syncWalletPreset() {
     const type = $("#walletType");
     if (!preset || !name) return;
     const val = preset.value;
-    name.value = val;
+    name.value = ($("#walletKind")?.value === "Business") ? val + " BUSINESS" : val;
     type.value = /BANK/.test(val) ? "Bank" : (val === "CASH" ? "Cash" : "E-Wallet");
 }
+
+function setWalletKind(kind) {
+    $("#walletKind").value = kind;
+    $$("#walletKindSeg .seg-btn").forEach(b => b.classList.toggle("active", b.dataset.kind === kind));
+}
+$$("#walletKindSeg .seg-btn").forEach(b => b.addEventListener("click", () => {
+    setWalletKind(b.dataset.kind);
+    syncWalletPreset();
+}));
 
 $("#walletCurrency").addEventListener("change", updateWalletPresetOptions);
 $("#walletPreset").addEventListener("change", syncWalletPreset);
@@ -979,15 +1180,7 @@ function reportRange(period) {
     return { from: '0000-01-01', to: '9999-12-31', label: 'All time' };
 }
 
-function walletBalanceOf(w) {
-    return data.transactions
-        .filter(t => t.currency === w.currency && (t.wallet === w.name || t.from === w.name || t.to === w.name))
-        .reduce((a, t) => a + (
-            t.type === 'income' && t.wallet === w.name ? Number(t.amount) :
-            t.type === 'expense' && t.wallet === w.name ? -Number(t.amount) :
-            t.type === 'transfer' && t.from === w.name ? -Number(t.amount) :
-            t.type === 'transfer' && t.to === w.name ? Number(t.amount) : 0), 0);
-}
+function walletBalanceOf(w) { return walletBal(w); }
 
 const REPORT_LOGO = "data:image/png;base64,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";
 
@@ -999,7 +1192,6 @@ function downloadReportPdf() {
         const txs = data.transactions
             .filter(t => t.date >= range.from && t.date <= range.to)
             .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
-        const CURS = ['USD', 'SLSH', 'ETB'];
         const sum = (type, c, cat) => txs.filter(t => t.type === type && t.currency === c && (!cat || t.category === cat)).reduce((a, t) => a + Number(t.amount), 0);
 
         const doc = new JsPDF({ unit: 'pt', format: 'a4' });
@@ -1071,23 +1263,24 @@ function downloadReportPdf() {
         // 1. Summary by currency
         heading('Summary by currency');
         table(
-            ['Currency', 'Income', 'Expenses', 'Net', 'Savings saved'],
+            ['Currency', 'Balance now', 'Income', 'Expenses', 'Net', 'Savings saved'],
             CURS.map(c => [
-                c,
+                curName(c),
+                fmt(currencyBalance(c), c),
                 fmt(sum('income', c), c),
                 fmt(sum('expense', c), c),
                 fmt(sum('income', c) - sum('expense', c), c),
                 fmt(data.goals.filter(g => g.currency === c).reduce((a, g) => a + Number(g.saved), 0), c)
             ]),
-            { columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } } }
+            { columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } } }
         );
 
         // 2. Wallets
         heading('Wallet balances (today)');
         table(
-            ['Wallet', 'Type', 'Currency', 'Balance'],
-            data.wallets.map(w => [w.name, w.type || 'Wallet', w.currency, fmt(walletBalanceOf(w), w.currency)]),
-            { columnStyles: { 3: { halign: 'right' } }, empty: 'No wallets yet.' }
+            ['Full name', 'Wallet', 'Category', 'Type', 'Currency', 'Balance'],
+            data.wallets.map(w => [w.fullName || '-', w.name, w.kind || 'Personal', w.type || 'Wallet', w.currency, fmt(walletBalanceOf(w), w.currency)]),
+            { columnStyles: { 5: { halign: 'right' } }, empty: 'No wallets yet.' }
         );
 
         // 3. Spending by category (period)
@@ -1130,7 +1323,9 @@ function downloadReportPdf() {
                 t.description,
                 t.category || 'Transfer',
                 t.wallet || `${t.from} -> ${t.to}`,
-                (t.type === 'income' ? '+' : t.type === 'expense' ? '-' : '') + fmt(t.amount, t.currency)
+                t.type === 'exchange'
+                    ? fmt(t.amount, t.currency) + ' -> ' + fmt(t.toAmount, t.toCurrency)
+                    : (t.type === 'income' ? '+' : t.type === 'expense' ? '-' : '') + fmt(t.amount, t.currency)
             ]),
             { columnStyles: { 5: { halign: 'right' } }, empty: 'No transactions in this period.' }
         );
