@@ -1765,3 +1765,121 @@ button.hero-eye:active { transform: scale(0.92); }
     .wm-item { flex-wrap: wrap; }
     .wm-bal { order: 3; }
 }
+
+
+/* ============================================================
+   SETTINGS POLISH — layout and typography only
+   Existing colors, page structure, and JavaScript/Supabase logic
+   are intentionally left unchanged.
+   ============================================================ */
+#settings .section-toolbar {
+    margin-bottom: 20px;
+}
+
+#settings .section-toolbar > div > p {
+    max-width: 680px;
+    font-size: 13.5px;
+    line-height: 1.65;
+}
+
+#settings .settings-grid {
+    gap: 16px;
+    align-items: stretch;
+}
+
+#settings .settings-card {
+    min-width: 0;
+    min-height: 0;
+    padding: 22px;
+    border-radius: 20px;
+}
+
+#settings .settings-title {
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+#settings .settings-title h3 {
+    font-size: 16px;
+    line-height: 1.35;
+    letter-spacing: -0.2px;
+}
+
+#settings .settings-title p,
+#settings .settings-card > p,
+#settings .settings-card .muted {
+    font-size: 12.5px;
+    line-height: 1.55;
+}
+
+#settings .settings-icon {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    border-radius: 13px;
+}
+
+#settings .settings-form {
+    gap: 13px;
+}
+
+#settings .settings-form label,
+#settings .settings-card label {
+    display: grid;
+    gap: 7px;
+    font-size: 12.5px;
+    line-height: 1.4;
+    font-weight: 600;
+}
+
+#settings .settings-form input,
+#settings .settings-form select,
+#settings .settings-form textarea,
+#settings .settings-card input,
+#settings .settings-card select,
+#settings .settings-card textarea {
+    min-width: 0;
+    max-width: 100%;
+    font-size: 13.5px;
+}
+
+#settings .settings-card button {
+    font-size: 13px;
+}
+
+#settings .status-line {
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+    #settings .settings-grid {
+        gap: 12px;
+    }
+
+    #settings .settings-card {
+        padding: 18px;
+        border-radius: 17px;
+    }
+
+    #settings .settings-title {
+        margin-bottom: 15px;
+    }
+
+    #settings .settings-icon {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+    }
+
+    #settings .settings-form input,
+    #settings .settings-form select,
+    #settings .settings-form textarea,
+    #settings .settings-card input,
+    #settings .settings-card select,
+    #settings .settings-card textarea {
+        font-size: 16px;
+    }
+}
