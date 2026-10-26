@@ -119,6 +119,7 @@
                 <h1 id="pageTitle">Dashboard</h1>
             </div>
             <div class="top-actions">
+                <button class="avatar-btn" id="profileBtn" title="Profile &amp; wallets" aria-label="Profile and wallets"><span id="profileInitial">A</span></button>
                 <button class="icon-btn" id="themeBtn" title="Toggle theme">
                     <i class="ph-bold ph-moon"></i>
                 </button>
@@ -352,9 +353,37 @@
                 <div>
                     <p>Save with a purpose.</p>
                 </div>
-                <button class="primary-btn" id="addGoal"><i class="ph-bold ph-plus"></i> New Goal</button>
+                <div class="toolbar-actions">
+                    <button class="secondary-btn" id="addSavingsTx"><i class="ph-bold ph-arrows-down-up"></i> Savings Transaction</button>
+                    <button class="primary-btn" id="addGoal"><i class="ph-bold ph-plus"></i> New Goal</button>
+                </div>
             </div>
             <div id="goalsGrid" class="goals-grid"></div>
+            <div class="panel">
+                <div class="panel-head">
+                    <span class="panel-icon"><i class="ph-fill ph-receipt"></i></span>
+                    <div>
+                        <h3>Savings Transactions</h3>
+                        <p>Every deposit and withdrawal on your goals</p>
+                    </div>
+                </div>
+                <div class="filters">
+                    <input id="searchSavings" placeholder="Search savings transactions...">
+                    <select id="savingsTypeFilter">
+                        <option value="all">All types</option>
+                        <option value="deposit">Deposit</option>
+                        <option value="withdraw">Withdraw</option>
+                    </select>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Date</th><th>Goal</th><th>Type</th><th>Note</th><th>Amount</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="savingsTxTable"></tbody>
+                    </table>
+                </div>
+            </div>
         </section>
 
         <!-- Wallets -->
@@ -363,7 +392,10 @@
                 <div>
                     <p>Personal and Business wallets, with live balances.</p>
                 </div>
-                <button class="primary-btn" id="addWallet"><i class="ph-bold ph-plus"></i> New Wallet</button>
+                <div class="toolbar-actions">
+                    <div class="wallet-search"><i class="ph-bold ph-magnifying-glass"></i><input id="walletSearch" placeholder="Search wallets..." autocomplete="off"></div>
+                    <button class="primary-btn" id="addWallet"><i class="ph-bold ph-plus"></i> New Wallet</button>
+                </div>
             </div>
             <div id="walletGrid" class="wallet-groups"></div>
         </section>
@@ -465,6 +497,16 @@
                         </div>
                     </div>
                     <button class="danger-btn full" id="resetData"><i class="ph-bold ph-arrow-counter-clockwise"></i> Reset All Data</button>
+                </div>
+                <div class="panel settings-card wallet-manage-card" id="walletManageCard">
+                    <div class="settings-title">
+                        <div class="settings-icon"><i class="ph-fill ph-wallet"></i></div>
+                        <div>
+                            <h3>Manage Wallets</h3>
+                            <p class="muted">Wallet owners (full names) are only shown here. Edit or delete wallets from this list.</p>
+                        </div>
+                    </div>
+                    <div id="walletManageList" class="wm-list"></div>
                 </div>
                 <div class="panel settings-card rates-card">
                     <div class="settings-title">
@@ -618,13 +660,17 @@
                 </div>
                 <label>Currency
                     <select id="walletCurrency">
-                        <option value="USD">US DOLLAR</option>
-                        <option value="SLSH">SL SHILLING</option>
-                        <option value="ETB">ET BIRR</option>
+                        <option value="BOTH">SOMALILAND: US DOLLAR + SL SHILLING (both at once)</option>
+                        <option value="USD">US DOLLAR only</option>
+                        <option value="SLSH">SL SHILLING only</option>
+                        <option value="ETB">ET BIRR (Ethiopia)</option>
                     </select>
                 </label>
                 <label>Wallet / Service<select id="walletPreset"></select></label>
                 <label>Wallet name<input id="walletName" required placeholder="e.g. Cash"></label>
+                <label id="walletAccountRow">Bank / Service account number (optional)
+                    <input id="walletAccount" inputmode="numeric" autocomplete="off" placeholder="Account number">
+                </label>
                 <label>Type
                     <select id="walletType">
                         <option>Cash</option>
@@ -634,6 +680,47 @@
                     </select>
                 </label>
                 <button class="primary-btn full" type="submit"><i class="ph-bold ph-wallet"></i> Create Wallet</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="walletEditModal">
+        <div class="modal-box">
+            <button class="close" data-close="walletEditModal"><i class="ph-bold ph-x"></i></button>
+            <h2>Edit Wallet</h2>
+            <form id="walletEditForm">
+                <input type="hidden" id="weId">
+                <label>Full name<input id="weFullName" class="big-input" required placeholder="Full name"></label>
+                <label>Wallet name<input id="weName" required></label>
+                <label>Category
+                    <select id="weKind"><option value="Personal">Personal</option><option value="Business">Business</option></select>
+                </label>
+                <label>Bank / Service account number (optional)<input id="weAccount" inputmode="numeric" autocomplete="off"></label>
+                <button class="primary-btn full" type="submit"><i class="ph-bold ph-floppy-disk"></i> Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="savingsTxModal">
+        <div class="modal-box">
+            <button class="close" data-close="savingsTxModal"><i class="ph-bold ph-x"></i></button>
+            <h2>Savings Transaction</h2>
+            <form id="savingsTxForm">
+                <label>Goal<select id="stGoal"></select></label>
+                <div class="field">
+                    <span class="field-label">Type</span>
+                    <div class="seg" id="stTypeSeg">
+                        <button type="button" class="seg-btn active" data-st="deposit"><i class="ph-bold ph-arrow-down-left"></i> Deposit</button>
+                        <button type="button" class="seg-btn" data-st="withdraw"><i class="ph-bold ph-arrow-up-right"></i> Withdraw</button>
+                    </div>
+                    <input type="hidden" id="stType" value="deposit">
+                </div>
+                <label><span>Amount <b id="stCur" class="ex-cur"></b></span>
+                    <input id="stAmount" type="number" min="0" step="any" inputmode="decimal" required>
+                </label>
+                <label>Date<input id="stDate" type="date" required></label>
+                <label>Note (optional)<input id="stNote" placeholder="e.g. Monthly saving"></label>
+                <button class="primary-btn full" type="submit"><i class="ph-bold ph-piggy-bank"></i> Save</button>
             </form>
         </div>
     </div>

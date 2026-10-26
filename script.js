@@ -102,6 +102,7 @@ const defaultData = {
         { id: 3, name: "Bank", fullName: "", kind: "Personal", type: "Bank", currency: "ETB" }
     ],
     budgets: [],
+    savingsTx: [],
     rates: { USD_SLSH: 0, USD_ETB: 0 }
 };
 
@@ -119,7 +120,8 @@ const $$ = s => document.querySelectorAll(s);
 const normalizeWallet = w => ({
     ...w,
     kind: w.kind === "Business" ? "Business" : "Personal",   // older wallets default to Personal
-    fullName: w.fullName || ""
+    fullName: w.fullName || "",
+    account: w.account || ""
 });
 
 const normalizeData = (value) => {
@@ -130,6 +132,7 @@ const normalizeData = (value) => {
         goals: Array.isArray(x.goals) ? x.goals : [],
         wallets: wallets.map(normalizeWallet),
         budgets: Array.isArray(x.budgets) ? x.budgets : [],
+        savingsTx: Array.isArray(x.savingsTx) ? x.savingsTx : [],
         rates: {
             USD_SLSH: Number(x.rates?.USD_SLSH) > 0 ? Number(x.rates.USD_SLSH) : 0,
             USD_ETB: Number(x.rates?.USD_ETB) > 0 ? Number(x.rates.USD_ETB) : 0
@@ -267,6 +270,7 @@ function renderRates() {
 
 function renderAll() {
     renderRates();
+    renderWalletManage();
     renderDashboard();
     renderTransactions();
     renderGoals();
@@ -406,6 +410,7 @@ function renderGoals() {
     $("#goalsGrid").innerHTML = data.goals.length
         ? data.goals.map(g => goalHTML(g)).join("")
         : `<div class="panel empty" style="grid-column:1/-1">Create your first savings goal.</div>`;
+    renderSavingsTx();
 }
 
 function goalHTML(g) {
@@ -429,22 +434,27 @@ function walletCardHTML(w) {
     const mine = data.transactions.filter(t => t.wallet === w.name && t.currency === w.currency);
     const income = mine.filter(t => t.type === 'income').reduce((a, t) => a + Number(t.amount), 0);
     const spent = mine.filter(t => t.type === 'expense').reduce((a, t) => a + Number(t.amount), 0);
+    const acc = w.account ? ' · Acc ····' + esc(String(w.account).slice(-4)) : '';
     return `<div class="wallet-card kind-${kind.toLowerCase()}">
         <div class="wallet-top">
             <div class="goal-icon"><i class="ph-fill ${kind === 'Business' ? 'ph-briefcase' : 'ph-user'}"></i></div>
             <span class="kind-badge ${kind.toLowerCase()}">${kind}</span>
             <button class="small-btn delete" onclick="deleteWallet(${w.id})"><i class="ph-bold ph-trash"></i></button>
         </div>
-        <h3 class="wallet-fullname">${esc(w.fullName || w.name)}</h3>
-        <div class="muted">${esc(w.name)} · ${esc(w.type || 'Wallet')} · ${curName(w.currency)}</div>
+        <h3 class="wallet-fullname">${esc(w.name)}</h3>
+        <div class="muted">${esc(w.type || 'Wallet')} · ${curName(w.currency)}${acc}</div>
         <div class="wallet-balance">${fmt(walletBal(w), w.currency)}</div>
         <div class="muted">Income ${fmt(income, w.currency)} · Expenses ${fmt(spent, w.currency)}</div>
     </div>`;
 }
 
+let walletQuery = '';
+const walletMatches = w => !walletQuery || [w.name, w.type, w.kind, w.currency, curName(w.currency), w.account || '']
+    .join(' ').toLowerCase().includes(walletQuery);
+
 function renderWallets() {
     $("#walletGrid").innerHTML = ['Personal', 'Business'].map(kind => {
-        const list = data.wallets.filter(w => (w.kind || 'Personal') === kind);
+        const list = data.wallets.filter(w => (w.kind || 'Personal') === kind && walletMatches(w));
         const tot = kindTotals(kind);
         const chips = CURS.filter(c => list.some(w => w.currency === c)).map(c => `<span class="group-chip">${fmt(tot[c], c)}</span>`).join('');
         return `<div class="wallet-group">
@@ -453,7 +463,7 @@ function renderWallets() {
                 <div><h3>${kind} Wallets</h3><small>${list.length} wallet${list.length === 1 ? '' : 's'}</small></div>
                 <div class="group-chips">${chips}</div>
             </div>
-            ${list.length ? `<div class="wallet-grid">${list.map(walletCardHTML).join('')}</div>` : `<div class="panel empty">No ${kind} wallets yet. Tap “New Wallet” and choose ${kind}.</div>`}
+            ${list.length ? `<div class="wallet-grid">${list.map(walletCardHTML).join('')}</div>` : `<div class="panel empty">${walletQuery ? `No ${kind} wallets match your search.` : `No ${kind} wallets yet. Tap “New Wallet” and choose ${kind}.`}</div>`}
         </div>`;
     }).join('');
 }
@@ -661,6 +671,75 @@ $('#transferForm').onsubmit = async e => {
 };
 
 // ============================================================
+// WALLET SEARCH, MANAGEMENT (Settings) AND PROFILE BUTTON
+// ============================================================
+$('#walletSearch').addEventListener('input', e => {
+    walletQuery = e.target.value.trim().toLowerCase();
+    renderWallets();
+});
+
+function renderWalletManage() {
+    const list = $('#walletManageList');
+    if (!list) return;
+    list.innerHTML = data.wallets.map(w => {
+        const kind = w.kind || 'Personal';
+        return `<div class="wm-item">
+            <span class="wm-ico ${kind.toLowerCase()}"><i class="ph-fill ${kind === 'Business' ? 'ph-briefcase' : 'ph-user'}"></i></span>
+            <div class="wm-info">
+                <strong>${esc(w.fullName || 'No full name')}</strong>
+                <small>${esc(w.name)} · ${kind} · ${curName(w.currency)}${w.account ? ' · Acc ' + esc(w.account) : ''}</small>
+            </div>
+            <div class="wm-bal">${mask(fmt(walletBal(w), w.currency))}</div>
+            <div class="row-actions">
+                <button class="small-btn" onclick="editWallet(${w.id})" title="Edit"><i class="ph-bold ph-pencil-simple"></i></button>
+                <button class="small-btn delete" onclick="deleteWallet(${w.id})" title="Delete"><i class="ph-bold ph-trash"></i></button>
+            </div>
+        </div>`;
+    }).join('');
+    const nm = (currentUser?.user_metadata?.full_name || currentUser?.user_metadata?.name || currentUser?.email || 'A').trim();
+    $('#profileInitial').textContent = nm.charAt(0).toUpperCase();
+}
+
+window.editWallet = id => {
+    const w = data.wallets.find(x => x.id === id);
+    if (!w) return;
+    $('#weId').value = w.id;
+    $('#weFullName').value = w.fullName || '';
+    $('#weName').value = w.name;
+    $('#weKind').value = w.kind || 'Personal';
+    $('#weAccount').value = w.account || '';
+    $('#walletEditModal').classList.add('show');
+};
+
+$('#walletEditForm').onsubmit = async e => {
+    e.preventDefault();
+    const w = data.wallets.find(x => String(x.id) === $('#weId').value);
+    if (!w) return;
+    const newName = $('#weName').value.trim().toUpperCase();
+    if (!newName) return toast('Enter the wallet name.');
+    if (newName.toLowerCase() !== w.name.toLowerCase() && data.wallets.some(x => x.name.toLowerCase() === newName.toLowerCase())) return toast('Another wallet already uses this name.');
+    const old = w.name;
+    if (newName !== old) {   // transactions refer to wallets by name
+        data.transactions.forEach(t => {
+            if (t.wallet === old) t.wallet = newName;
+            if (t.from === old) t.from = newName;
+            if (t.to === old) t.to = newName;
+        });
+        w.name = newName;
+    }
+    w.fullName = $('#weFullName').value.trim();
+    w.kind = $('#weKind').value === 'Business' ? 'Business' : 'Personal';
+    w.account = $('#weAccount').value.trim();
+    closeModal('walletEditModal');
+    if (await save(true, 'Saving wallet...')) toast('Wallet updated.');
+};
+
+$('#profileBtn').onclick = () => {
+    showSection('settings');
+    setTimeout(() => $('#walletManageCard').scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+};
+
+// ============================================================
 // EXCHANGE RATES (Settings)
 // ============================================================
 $('#ratesForm').onsubmit = async e => {
@@ -794,14 +873,75 @@ $('#goalForm').onsubmit = async e => {
     if (await save(true, 'Creating savings goal...')) toast('Savings goal created.');
 };
 
-window.addToGoal = async id => {
-    const g = data.goals.find(x => x.id === id);
-    const amount = Number(prompt(`How much do you want to add to "${g.name}"?`));
-    if (amount > 0) {
-        g.saved += amount;
-        if (await save(true, 'Updating savings...')) toast('Savings updated.');
-    }
+// ---- Savings transactions (separate from the main Transactions) ----
+function openSavingsTx(goalId) {
+    if (!data.goals.length) return toast('Create a savings goal first.');
+    $('#stGoal').innerHTML = data.goals.map(g => `<option value="${g.id}" ${g.id === goalId ? 'selected' : ''}>${esc(g.name)} (${g.currency})</option>`).join('');
+    setSavingsType('deposit');
+    $('#stAmount').value = '';
+    $('#stNote').value = '';
+    $('#stDate').value = new Date().toISOString().slice(0, 10);
+    refreshSavingsCur();
+    $('#savingsTxModal').classList.add('show');
+}
+function refreshSavingsCur() {
+    const g = data.goals.find(x => String(x.id) === $('#stGoal').value);
+    $('#stCur').textContent = g ? '(' + g.currency + ')' : '';
+}
+function setSavingsType(t) {
+    $('#stType').value = t;
+    $$('#stTypeSeg .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.st === t));
+}
+window.addToGoal = id => openSavingsTx(id);
+$('#addSavingsTx').onclick = () => openSavingsTx();
+$('#stGoal').onchange = refreshSavingsCur;
+$$('#stTypeSeg .seg-btn').forEach(b => b.addEventListener('click', () => setSavingsType(b.dataset.st)));
+
+$('#savingsTxForm').onsubmit = async e => {
+    e.preventDefault();
+    const g = data.goals.find(x => String(x.id) === $('#stGoal').value);
+    const amount = Number($('#stAmount').value);
+    const type = $('#stType').value === 'withdraw' ? 'withdraw' : 'deposit';
+    if (!g) return toast('Choose a goal.');
+    if (!(amount > 0)) return toast('Enter a valid amount.');
+    if (type === 'withdraw' && amount > Number(g.saved)) return toast(`You only have ${fmt(g.saved, g.currency)} saved in this goal.`);
+    g.saved = Number(g.saved) + (type === 'deposit' ? amount : -amount);
+    data.savingsTx.push({
+        id: Date.now(), goalId: g.id, goalName: g.name, type, amount,
+        currency: g.currency, date: $('#stDate').value, note: $('#stNote').value.trim()
+    });
+    closeModal('savingsTxModal');
+    if (await save(true, 'Saving transaction...')) toast(type === 'deposit' ? 'Deposit saved.' : 'Withdrawal saved.');
 };
+
+function renderSavingsTx() {
+    const body = $('#savingsTxTable');
+    if (!body) return;
+    const q = ($('#searchSavings')?.value || '').trim().toLowerCase();
+    const tf = $('#savingsTypeFilter')?.value || 'all';
+    const rows = [...data.savingsTx]
+        .filter(t => (tf === 'all' || t.type === tf) && (!q || [t.goalName, t.note, t.type, t.currency].join(' ').toLowerCase().includes(q)))
+        .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+    body.innerHTML = rows.length ? rows.map(t => `<tr>
+        <td>${esc(t.date)}</td>
+        <td><strong>${esc(t.goalName)}</strong></td>
+        <td><span class="pill ${t.type === 'deposit' ? 'income' : 'expense'}">${t.type === 'deposit' ? 'Deposit' : 'Withdraw'}</span></td>
+        <td>${esc(t.note || '—')}</td>
+        <td class="${t.type === 'deposit' ? 'income-text' : 'expense-text'}"><strong>${t.type === 'deposit' ? '+' : '−'}${fmt(t.amount, t.currency)}</strong></td>
+        <td><div class="row-actions"><button class="small-btn delete" onclick="deleteSavingsTx(${t.id})"><i class="ph-bold ph-trash"></i></button></div></td>
+    </tr>`).join('') : `<tr><td colspan="6" class="empty">No savings transactions yet.</td></tr>`;
+}
+$('#searchSavings').addEventListener('input', renderSavingsTx);
+$('#savingsTypeFilter').addEventListener('change', renderSavingsTx);
+
+window.deleteSavingsTx = id => requestSecureAction(async () => {
+    const t = data.savingsTx.find(x => x.id === id);
+    if (!t) return;
+    const g = data.goals.find(x => x.id === t.goalId);
+    if (g) g.saved = Math.max(0, Number(g.saved) + (t.type === 'deposit' ? -t.amount : t.amount));
+    data.savingsTx = data.savingsTx.filter(x => x.id !== id);
+    if (await save(true, 'Deleting savings transaction...')) toast('Savings transaction deleted.');
+});
 
 window.deleteGoal = id => {
     if (confirm('Delete this savings goal?')) {
@@ -823,24 +963,41 @@ window.deleteTx = id => {
 // ============================================================
 $('#addWallet').onclick = () => $('#walletModal').classList.add('show');
 
+function uniqueWalletName(base, kind) {
+    const taken = n => data.wallets.some(w => w.name.toLowerCase() === n.toLowerCase());
+    if (!taken(base)) return base;
+    if (kind === 'Business' && !taken(base + ' BUSINESS')) return base + ' BUSINESS';
+    let i = 2;
+    while (taken(`${base} ${i}`)) i++;
+    return `${base} ${i}`;
+}
+
 $('#walletForm').onsubmit = async e => {
     e.preventDefault();
-    const name = $('#walletName').value.trim();
-    const currency = $('#walletCurrency').value;
-    if (data.wallets.some(w => w.name.toLowerCase() === name.toLowerCase())) return toast('A wallet with this name already exists. Change the wallet name.');
-    data.wallets.push({
-        id: Date.now(),
-        name,
-        fullName: $('#walletFullName').value.trim(),
-        kind: $('#walletKind').value === 'Business' ? 'Business' : 'Personal',
-        type: $('#walletType').value,
-        currency
+    const base = $('#walletName').value.trim().toUpperCase();
+    if (!base) return toast('Enter the wallet name.');
+    const sel = $('#walletCurrency').value;
+    const curs = sel === 'BOTH' ? ['USD', 'SLSH'] : [sel];
+    const kind = $('#walletKind').value === 'Business' ? 'Business' : 'Personal';
+    const made = [];
+    curs.forEach((currency, i) => {
+        const name = uniqueWalletName(curs.length > 1 ? `${base} ${currency}` : base, kind);
+        made.push(name);
+        data.wallets.push({
+            id: Date.now() + i,
+            name,
+            fullName: $('#walletFullName').value.trim(),
+            kind,
+            account: $('#walletAccount').value.trim(),
+            type: $('#walletType').value,
+            currency
+        });
     });
     e.target.reset();
     setWalletKind('Personal');
     updateWalletPresetOptions();
     closeModal('walletModal');
-    if (await save(true, 'Creating wallet...')) toast('Wallet created.');
+    if (await save(true, 'Creating wallet...')) toast('Wallet created: ' + made.join(', '));
 };
 
 window.deleteWallet = id => {
@@ -976,10 +1133,12 @@ const SUPABASE_URL = "https://supvvuzyuaptstedwqsu.supabase.co";
 const SUPABASE_KEY = "sb_publishable_jeX4deGHUQgW9iHWD__dsg_dh-mxrml";
 const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const SOMALILAND_WALLETS = ["CASH", "ZAAD", "EDAHAB", "KAASHPLUS", "DARASALAAM BANK", "DAHABSHIIL BANK", "OTHER TRANS SOMALILAND"];
 const walletCatalog = {
-    USD: ["CASH", "ZAAD", "EDAHAB", "KAASHPLUS", "DARSALAAM BANK", "DAHABSHIIL BANK", "PREMIERE BANK", "OTHER TRANS"],
-    SLSH: ["CASH", "ZAAD", "EDAHAB", "KAASHPLUS", "DARSALAAM BANK", "DAHABSHIIL BANK", "PREMIERE BANK", "OTHER TRANS"],
-    ETB: ["CASH", "EBIRR KAAFI", "COOPAY EBIRR", "TELEBIR", "MPESSA", "KAAFIMF BANK", "CBO BANK", "CBE BANK", "OTHER TRANS"]
+    BOTH: SOMALILAND_WALLETS,
+    USD: SOMALILAND_WALLETS,
+    SLSH: SOMALILAND_WALLETS,
+    ETB: ["CASH", "EBIRR KAAFI", "EBIRR COOPAY", "TELEBIRR", "MPESA", "KAAFIMF BANK", "COOP BANK", "OTHER ET"]
 };
 
 const loginScreen = $("#loginScreen");
@@ -1111,18 +1270,19 @@ function syncWalletPreset() {
     const type = $("#walletType");
     if (!preset || !name) return;
     const val = preset.value;
-    name.value = ($("#walletKind")?.value === "Business") ? val + " BUSINESS" : val;
+    const other = /^OTHER/.test(val);
+    name.value = other ? "" : val;
+    name.placeholder = other ? "Type the service / bank name" : "e.g. Cash";
     type.value = /BANK/.test(val) ? "Bank" : (val === "CASH" ? "Cash" : "E-Wallet");
+    $("#walletAccountRow").classList.toggle("is-hidden", val === "CASH");
+    if (other) name.focus();
 }
 
 function setWalletKind(kind) {
     $("#walletKind").value = kind;
     $$("#walletKindSeg .seg-btn").forEach(b => b.classList.toggle("active", b.dataset.kind === kind));
 }
-$$("#walletKindSeg .seg-btn").forEach(b => b.addEventListener("click", () => {
-    setWalletKind(b.dataset.kind);
-    syncWalletPreset();
-}));
+$$("#walletKindSeg .seg-btn").forEach(b => b.addEventListener("click", () => setWalletKind(b.dataset.kind)));
 
 $("#walletCurrency").addEventListener("change", updateWalletPresetOptions);
 $("#walletPreset").addEventListener("change", syncWalletPreset);
@@ -1338,9 +1498,9 @@ function downloadReportPdf() {
         // 2. Wallets
         heading('Wallet balances (today)');
         table(
-            ['Full name', 'Wallet', 'Category', 'Type', 'Currency', 'Balance'],
-            data.wallets.map(w => [w.fullName || '-', w.name, w.kind || 'Personal', w.type || 'Wallet', w.currency, fmt(walletBalanceOf(w), w.currency)]),
-            { columnStyles: { 5: { halign: 'right' } }, empty: 'No wallets yet.' }
+            ['Wallet', 'Category', 'Type', 'Currency', 'Balance'],
+            data.wallets.map(w => [w.name, w.kind || 'Personal', w.type || 'Wallet', w.currency, fmt(walletBalanceOf(w), w.currency)]),
+            { columnStyles: { 4: { halign: 'right' } }, empty: 'No wallets yet.' }
         );
 
         // 3. Spending by category (period)
