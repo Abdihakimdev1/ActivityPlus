@@ -103,6 +103,7 @@ const defaultData = {
     ],
     budgets: [],
     savingsTx: [],
+    services: [],
     rates: { USD_SLSH: 0, USD_ETB: 0 }
 };
 
@@ -133,6 +134,7 @@ const normalizeData = (value) => {
         wallets: wallets.map(normalizeWallet),
         budgets: Array.isArray(x.budgets) ? x.budgets : [],
         savingsTx: Array.isArray(x.savingsTx) ? x.savingsTx : [],
+        services: Array.isArray(x.services) ? x.services : [],
         rates: {
             USD_SLSH: Number(x.rates?.USD_SLSH) > 0 ? Number(x.rates.USD_SLSH) : 0,
             USD_ETB: Number(x.rates?.USD_ETB) > 0 ? Number(x.rates.USD_ETB) : 0
@@ -205,6 +207,22 @@ const fmt = (n, c) => ({ USD: "$", SLSH: "SLSH ", ETB: "ETB " }[c] || "") + Numb
 const CURS = ["USD", "SLSH", "ETB"];
 const CUR_NAMES = { USD: "US DOLLAR", SLSH: "SL SHILLING", ETB: "ET BIRR" };
 const curName = c => CUR_NAMES[c] || c;
+
+// Each service is created together with ALL its wallets and its (optional) bank account.
+// Bank accounts cannot be created on their own: they only exist inside a service.
+const WALLET_SERVICES = {
+    ZAAD:      { label: "ZAAD", title: "ZAAD SERVICE", country: "Somaliland", groups: [{ title: "ZAAD", currencies: ["USD", "SLSH"], bank: "Darasalaam Bank" }] },
+    KAASHPLUS: { label: "KAASHPLUS", title: "KAASHPLUS", country: "Somaliland", groups: [{ title: "KAASHPLUS", currencies: ["USD", "SLSH"], bank: "Darasalaam Bank" }] },
+    EDAHAB:    { label: "EDAHAB", title: "EDAHAB", country: "Somaliland", groups: [{ title: "EDAHAB", currencies: ["USD", "SLSH"], bank: "Dahabshiil Bank" }] },
+    EBIRR:     { label: "EBIRR (Kaafi + Coopay)", title: "EBIRR", country: "Ethiopia", groups: [
+                    { title: "EBIRR KAAFI", short: "KAAFI", currencies: ["ETB"], bank: "Kaafi MF Bank" },
+                    { title: "EBIRR COOPAY", short: "COOPAY", currencies: ["ETB"], bank: "CBO Bank" }] },
+    TELEBIRR:  { label: "TELEBIRR", title: "TELEBIRR", country: "Ethiopia", groups: [{ title: "TELEBIRR", currencies: ["ETB"], bank: "Tele Acc" }] },
+    MPESA:     { label: "MPESA", title: "MPESA", country: "Ethiopia", groups: [{ title: "MPESA", currencies: ["ETB"], bank: "M-Pesa Bank" }] },
+    CASH:      { label: "CASH", title: "CASH", country: "", custom: "cash" },
+    OTHER:     { label: "OTHER (type the name)", title: "OTHER", country: "", custom: "other" }
+};
+
 
 // Balance of one wallet: income/expense/transfer plus both sides of an exchange
 function walletBal(w) {
@@ -449,23 +467,55 @@ function walletCardHTML(w) {
 }
 
 let walletQuery = '';
-const walletMatches = w => !walletQuery || [w.name, w.type, w.kind, w.currency, curName(w.currency), w.account || '']
+const walletMatches = w => !walletQuery || [w.name, w.type, w.kind, w.currency, curName(w.currency), w.account || '', w.group || '']
     .join(' ').toLowerCase().includes(walletQuery);
 
-function renderWallets() {
-    $("#walletGrid").innerHTML = ['Personal', 'Business'].map(kind => {
-        const list = data.wallets.filter(w => (w.kind || 'Personal') === kind && walletMatches(w));
-        const tot = kindTotals(kind);
-        const chips = CURS.filter(c => list.some(w => w.currency === c)).map(c => `<span class="group-chip">${fmt(tot[c], c)}</span>`).join('');
-        return `<div class="wallet-group">
-            <div class="group-head ${kind.toLowerCase()}">
-                <span class="group-ico"><i class="ph-fill ${kind === 'Business' ? 'ph-briefcase' : 'ph-user'}"></i></span>
-                <div><h3>${kind} Wallets</h3><small>${list.length} wallet${list.length === 1 ? '' : 's'}</small></div>
-                <div class="group-chips">${chips}</div>
+const svcInitials = t => t.replace(/SERVICE/, '').trim().slice(0, 5);
+
+function serviceCardHTML(s) {
+    const kind = s.kind || 'Personal';
+    const multi = s.groups.length > 1;
+    const groups = s.groups.map(g => {
+        const ws = data.wallets.filter(w => w.serviceId === s.id && w.group === g.title && walletMatches(w));
+        const boxes = ws.map(w => `<div class="svc-wallet">
+            <div class="svc-wicon"><i class="ph-fill ph-wallet"></i></div>
+            <div><small>${esc(w.currency)} Wallet</small><strong>${mask(fmt(walletBal(w), w.currency))}</strong></div>
+        </div>`).join('');
+        const bank = g.bank ? `<div class="svc-bank">
+            <div class="svc-bank-head">
+                <span class="svc-wicon bank"><i class="ph-fill ph-bank"></i></span>
+                <div><strong>${esc(g.bank)}</strong><small>Bank Account</small></div>
+                <span class="opt-badge">Optional</span>
             </div>
-            ${list.length ? `<div class="wallet-grid">${list.map(walletCardHTML).join('')}</div>` : `<div class="panel empty">${walletQuery ? `No ${kind} wallets match your search.` : `No ${kind} wallets yet. Tap “New Wallet” and choose ${kind}.`}</div>`}
+            ${g.account
+                ? `<div class="svc-bank-note acc"><i class="ph-bold ph-hash"></i> ${esc(g.account)}</div>`
+                : `<div class="svc-bank-note"><i class="ph-bold ph-info"></i> The account number is added when it is ready.</div>`}
+            <button class="primary-btn full" onclick="openBankAcct('${s.id}', '${esc(g.title).replace(/'/g, "\\'")}')"><i class="ph-bold ${g.account ? 'ph-pencil-simple' : 'ph-plus'}"></i> ${g.account ? 'Edit' : 'Add'} Bank Account</button>
+        </div>` : '';
+        return `<div class="svc-group ${multi ? 'multi' : ''}">
+            ${multi ? `<div class="svc-group-head"><span class="svc-logo sm">${esc(g.short || svcInitials(g.title))}</span><h4>${esc(g.title)}</h4></div>` : ''}
+            <div class="svc-body">${boxes}${bank}</div>
         </div>`;
     }).join('');
+    return `<div class="svc-card kind-${kind.toLowerCase()}">
+        <div class="svc-head">
+            <span class="svc-logo">${esc(svcInitials(s.title))}</span>
+            <div class="svc-title"><h3>${esc(s.title)}</h3><small>${esc([s.country, 'Mobile Money'].filter(Boolean).join(' · '))}</small></div>
+            <span class="kind-badge ${kind.toLowerCase()}">${kind}</span>
+            <button class="small-btn delete" onclick="deleteService('${s.id}')" title="Delete service"><i class="ph-bold ph-trash"></i></button>
+        </div>
+        ${groups}
+    </div>`;
+}
+
+function renderWallets() {
+    const services = (data.services || []).filter(s => !walletQuery || [s.title, s.country, s.kind, ...s.groups.map(g => g.title + ' ' + g.bank)].join(' ').toLowerCase().includes(walletQuery)
+        || data.wallets.some(w => w.serviceId === s.id && walletMatches(w)));
+    const legacy = data.wallets.filter(w => !w.serviceId && walletMatches(w));
+    let out = services.map(serviceCardHTML).join('');
+    if (legacy.length) out += `<div class="wallet-group"><div class="group-head"><span class="group-ico"><i class="ph-fill ph-wallet"></i></span><div><h3>Other wallets</h3><small>${legacy.length} wallet${legacy.length === 1 ? '' : 's'}</small></div></div><div class="wallet-grid">${legacy.map(walletCardHTML).join('')}</div></div>`;
+    if (!out) out = `<div class="panel empty">${walletQuery ? 'No wallets match your search.' : 'No wallets yet. Tap “New Wallet” and choose a service.'}</div>`;
+    $("#walletGrid").innerHTML = out;
 }
 
 function renderBudgets() {
@@ -734,9 +784,16 @@ $('#walletEditForm').onsubmit = async e => {
     if (await save(true, 'Saving wallet...')) toast('Wallet updated.');
 };
 
+function setWalletView(view) {   // 'list' | 'settings'
+    $('#walletsMain').classList.toggle('is-hidden', view === 'settings');
+    $('#walletSettingsView').classList.toggle('is-hidden', view !== 'settings');
+}
+$('#walletSettingsBtn').onclick = () => setWalletView('settings');
+$('#walletSettingsBack').onclick = () => setWalletView('list');
+$$('.nav-link').forEach(b => b.addEventListener('click', () => { if (b.dataset.section === 'wallets') setWalletView('list'); }));
 $('#profileBtn').onclick = () => {
-    showSection('settings');
-    setTimeout(() => $('#walletManageCard').scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    showSection('wallets');
+    setWalletView('settings');
 };
 
 // ============================================================
@@ -961,7 +1018,7 @@ window.deleteTx = id => {
 // ============================================================
 // WALLETS
 // ============================================================
-$('#addWallet').onclick = () => $('#walletModal').classList.add('show');
+$('#addWallet').onclick = () => { refreshWalletForm(); $('#walletModal').classList.add('show'); };
 
 function uniqueWalletName(base, kind) {
     const taken = n => data.wallets.some(w => w.name.toLowerCase() === n.toLowerCase());
@@ -972,33 +1029,95 @@ function uniqueWalletName(base, kind) {
     return `${base} ${i}`;
 }
 
+// What the chosen service will create (groups with wallets + attached bank)
+function serviceBlueprint() {
+    const key = $('#walletService').value;
+    const def = WALLET_SERVICES[key];
+    if (!def) return null;
+    if (def.custom) {
+        const cur = $('#walletCurrency').value;
+        const nm = def.custom === 'cash' ? 'CASH' : ($('#walletName').value.trim().toUpperCase() || 'OTHER');
+        return { key, title: nm, country: '', groups: [{ title: nm, currencies: [cur], bank: '', type: def.custom === 'cash' ? 'Cash' : 'E-Wallet' }] };
+    }
+    return { key, title: def.title, country: def.country, groups: def.groups.map(g => ({ ...g, type: 'E-Wallet' })) };
+}
+
+function refreshWalletForm() {
+    const def = WALLET_SERVICES[$('#walletService').value];
+    $('#walletCustomRow').classList.toggle('is-hidden', !def?.custom);
+    $('#walletNameRow').classList.toggle('is-hidden', def?.custom !== 'other');
+    $('#walletName').required = def?.custom === 'other';
+    const bp = serviceBlueprint();
+    if (!bp) return;
+    $('#walletPreview').innerHTML = `<strong>Will be created together:</strong>` + bp.groups.map(g =>
+        `<div class="pv-group">${bp.groups.length > 1 ? `<b>${esc(g.title)}</b>` : ''}` +
+        g.currencies.map(c => `<span class="pv-chip"><i class="ph-fill ph-wallet"></i> ${esc(c)} wallet</span>`).join('') +
+        (g.bank ? `<span class="pv-chip bank"><i class="ph-fill ph-bank"></i> ${esc(g.bank)} <em>(optional)</em></span>` : '') +
+        `</div>`).join('');
+}
+
+$('#walletService').innerHTML = Object.entries(WALLET_SERVICES).map(([k, d]) => `<option value="${k}">${esc(d.label)}</option>`).join('');
+$('#walletService').addEventListener('change', refreshWalletForm);
+$('#walletCurrency').addEventListener('change', refreshWalletForm);
+$('#walletName').addEventListener('input', refreshWalletForm);
+
 $('#walletForm').onsubmit = async e => {
     e.preventDefault();
-    const base = $('#walletName').value.trim().toUpperCase();
-    if (!base) return toast('Enter the wallet name.');
-    const sel = $('#walletCurrency').value;
-    const curs = sel === 'BOTH' ? ['USD', 'SLSH'] : [sel];
+    const bp = serviceBlueprint();
+    if (!bp) return;
+    const fullName = $('#walletFullName').value.trim();
     const kind = $('#walletKind').value === 'Business' ? 'Business' : 'Personal';
+    const serviceId = 'svc' + Date.now();
     const made = [];
-    curs.forEach((currency, i) => {
-        const name = uniqueWalletName(curs.length > 1 ? `${base} ${currency}` : base, kind);
-        made.push(name);
-        data.wallets.push({
-            id: Date.now() + i,
-            name,
-            fullName: $('#walletFullName').value.trim(),
-            kind,
-            account: $('#walletAccount').value.trim(),
-            type: $('#walletType').value,
-            currency
+    let n = 0;
+    data.services = data.services || [];
+    data.services.push({
+        id: serviceId, key: bp.key, title: bp.title, country: bp.country, kind, fullName,
+        groups: bp.groups.map(g => ({ title: g.title, bank: g.bank || '', account: '' }))
+    });
+    bp.groups.forEach(g => {
+        g.currencies.forEach(currency => {
+            const name = uniqueWalletName(`${g.title} ${currency}`.replace(/^CASH CASH/, 'CASH'), kind);
+            made.push(name);
+            data.wallets.push({ id: Date.now() + (++n), name, fullName, kind, account: '', type: g.type, currency, serviceId, group: g.title });
         });
     });
     e.target.reset();
     setWalletKind('Personal');
-    updateWalletPresetOptions();
     closeModal('walletModal');
-    if (await save(true, 'Creating wallet...')) toast('Wallet created: ' + made.join(', '));
+    if (await save(true, 'Creating wallet...')) toast('Created: ' + made.join(', '));
 };
+
+// ---- Bank account number (bank is attached to its service, never created alone) ----
+window.openBankAcct = (serviceId, group) => {
+    const s = (data.services || []).find(x => x.id === serviceId);
+    const g = s?.groups.find(x => x.title === group);
+    if (!g) return;
+    $('#baServiceId').value = serviceId;
+    $('#baGroup').value = group;
+    $('#baTitle').textContent = g.bank;
+    $('#baAccount').value = g.account || '';
+    $('#bankAcctModal').classList.add('show');
+};
+$('#bankAcctForm').onsubmit = async e => {
+    e.preventDefault();
+    const s = (data.services || []).find(x => x.id === $('#baServiceId').value);
+    const g = s?.groups.find(x => x.title === $('#baGroup').value);
+    if (!g) return;
+    g.account = $('#baAccount').value.trim();
+    closeModal('bankAcctModal');
+    if (await save(true, 'Saving bank account...')) toast(g.account ? 'Bank account saved.' : 'Bank account cleared.');
+};
+
+window.deleteService = id => requestSecureAction(async () => {
+    const s = (data.services || []).find(x => x.id === id);
+    if (!s) return;
+    if (data.wallets.filter(w => w.serviceId !== id).length < 1) return toast('Keep at least one wallet.');
+    if (!confirm(`Delete ${s.title} with all its wallets and bank account? Existing transactions will remain.`)) return;
+    data.wallets = data.wallets.filter(w => w.serviceId !== id);
+    data.services = data.services.filter(x => x.id !== id);
+    if (await save(true, 'Deleting service...')) toast(s.title + ' deleted.');
+});
 
 window.deleteWallet = id => {
     if (data.wallets.length <= 1) return toast('Keep at least one wallet.');
@@ -1133,14 +1252,6 @@ const SUPABASE_URL = "https://supvvuzyuaptstedwqsu.supabase.co";
 const SUPABASE_KEY = "sb_publishable_jeX4deGHUQgW9iHWD__dsg_dh-mxrml";
 const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const SOMALILAND_WALLETS = ["CASH", "ZAAD", "EDAHAB", "KAASHPLUS", "DARASALAAM BANK", "DAHABSHIIL BANK", "OTHER TRANS SOMALILAND"];
-const walletCatalog = {
-    BOTH: SOMALILAND_WALLETS,
-    USD: SOMALILAND_WALLETS,
-    SLSH: SOMALILAND_WALLETS,
-    ETB: ["CASH", "EBIRR KAAFI", "EBIRR COOPAY", "TELEBIRR", "MPESA", "KAAFIMF BANK", "COOP BANK", "OTHER ET"]
-};
-
 const loginScreen = $("#loginScreen");
 const appShell = $$(".sidebar, .main");
 
@@ -1254,39 +1365,15 @@ $("#settingsThemeBtn").onclick = () => {
 };
 
 // ============================================================
-// WALLET PRESETS
+// WALLET KIND
 // ============================================================
-function updateWalletPresetOptions() {
-    const cur = $("#walletCurrency")?.value || "USD";
-    const preset = $("#walletPreset");
-    if (!preset) return;
-    preset.innerHTML = walletCatalog[cur].map((x, i) => `<option value="${esc(x)}">${i + 1}. ${esc(x)}</option>`).join("");
-    syncWalletPreset();
-}
-
-function syncWalletPreset() {
-    const preset = $("#walletPreset");
-    const name = $("#walletName");
-    const type = $("#walletType");
-    if (!preset || !name) return;
-    const val = preset.value;
-    const other = /^OTHER/.test(val);
-    name.value = other ? "" : val;
-    name.placeholder = other ? "Type the service / bank name" : "e.g. Cash";
-    type.value = /BANK/.test(val) ? "Bank" : (val === "CASH" ? "Cash" : "E-Wallet");
-    $("#walletAccountRow").classList.toggle("is-hidden", val === "CASH");
-    if (other) name.focus();
-}
-
 function setWalletKind(kind) {
     $("#walletKind").value = kind;
     $$("#walletKindSeg .seg-btn").forEach(b => b.classList.toggle("active", b.dataset.kind === kind));
 }
 $$("#walletKindSeg .seg-btn").forEach(b => b.addEventListener("click", () => setWalletKind(b.dataset.kind)));
 
-$("#walletCurrency").addEventListener("change", updateWalletPresetOptions);
-$("#walletPreset").addEventListener("change", syncWalletPreset);
-updateWalletPresetOptions();
+refreshWalletForm();
 
 // ============================================================
 // CURRENCY WALLET SELECTS

@@ -388,16 +388,37 @@
 
         <!-- Wallets -->
         <section id="wallets" class="section">
-            <div class="section-toolbar">
-                <div>
-                    <p>Personal and Business wallets, with live balances.</p>
+            <div id="walletsMain">
+                <div class="section-toolbar">
+                    <div>
+                        <p>Mobile money services with their wallets and bank accounts.</p>
+                    </div>
+                    <div class="toolbar-actions">
+                        <div class="wallet-search"><i class="ph-bold ph-magnifying-glass"></i><input id="walletSearch" placeholder="Search wallets..." autocomplete="off"></div>
+                        <button class="secondary-btn" id="walletSettingsBtn"><i class="ph-fill ph-gear-six"></i> Settings</button>
+                        <button class="primary-btn" id="addWallet"><i class="ph-bold ph-plus"></i> New Wallet</button>
+                    </div>
                 </div>
-                <div class="toolbar-actions">
-                    <div class="wallet-search"><i class="ph-bold ph-magnifying-glass"></i><input id="walletSearch" placeholder="Search wallets..." autocomplete="off"></div>
-                    <button class="primary-btn" id="addWallet"><i class="ph-bold ph-plus"></i> New Wallet</button>
+                <div id="walletGrid" class="wallet-groups"></div>
+            </div>
+            <div id="walletSettingsView" class="is-hidden">
+                <div class="section-toolbar">
+                    <div class="ws-title">
+                        <button class="small-btn" id="walletSettingsBack" title="Back to wallets"><i class="ph-bold ph-arrow-left"></i></button>
+                        <h3>Wallet Settings</h3>
+                    </div>
+                </div>
+                <div class="panel settings-card wallet-manage-card" id="walletManageCard">
+                    <div class="settings-title">
+                        <div class="settings-icon"><i class="ph-fill ph-wallet"></i></div>
+                        <div>
+                            <h3>Manage Wallets</h3>
+                            <p class="muted">Wallet owners (full names) are only shown here. Edit or delete wallets from this list.</p>
+                        </div>
+                    </div>
+                    <div id="walletManageList" class="wm-list"></div>
                 </div>
             </div>
-            <div id="walletGrid" class="wallet-groups"></div>
         </section>
 
         <!-- Settings -->
@@ -497,16 +518,6 @@
                         </div>
                     </div>
                     <button class="danger-btn full" id="resetData"><i class="ph-bold ph-arrow-counter-clockwise"></i> Reset All Data</button>
-                </div>
-                <div class="panel settings-card wallet-manage-card" id="walletManageCard">
-                    <div class="settings-title">
-                        <div class="settings-icon"><i class="ph-fill ph-wallet"></i></div>
-                        <div>
-                            <h3>Manage Wallets</h3>
-                            <p class="muted">Wallet owners (full names) are only shown here. Edit or delete wallets from this list.</p>
-                        </div>
-                    </div>
-                    <div id="walletManageList" class="wm-list"></div>
                 </div>
                 <div class="panel settings-card rates-card">
                     <div class="settings-title">
@@ -658,28 +669,31 @@
                     </div>
                     <input type="hidden" id="walletKind" value="Personal">
                 </div>
-                <label>Currency
+                <label>Wallet / Service<select id="walletService"></select></label>
+                <label id="walletCustomRow" class="is-hidden">Currency
                     <select id="walletCurrency">
-                        <option value="BOTH">SOMALILAND: US DOLLAR + SL SHILLING (both at once)</option>
-                        <option value="USD">US DOLLAR only</option>
-                        <option value="SLSH">SL SHILLING only</option>
-                        <option value="ETB">ET BIRR (Ethiopia)</option>
+                        <option value="USD">US DOLLAR</option>
+                        <option value="SLSH">SL SHILLING</option>
+                        <option value="ETB">ET BIRR</option>
                     </select>
                 </label>
-                <label>Wallet / Service<select id="walletPreset"></select></label>
-                <label>Wallet name<input id="walletName" required placeholder="e.g. Cash"></label>
-                <label id="walletAccountRow">Bank / Service account number (optional)
-                    <input id="walletAccount" inputmode="numeric" autocomplete="off" placeholder="Account number">
-                </label>
-                <label>Type
-                    <select id="walletType">
-                        <option>Cash</option>
-                        <option>Bank</option>
-                        <option>E-Wallet</option>
-                        <option>Card</option>
-                    </select>
-                </label>
+                <label id="walletNameRow" class="is-hidden">Service name<input id="walletName" placeholder="Type the service / bank name"></label>
+                <div id="walletPreview" class="wallet-preview"></div>
                 <button class="primary-btn full" type="submit"><i class="ph-bold ph-wallet"></i> Create Wallet</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="bankAcctModal">
+        <div class="modal-box">
+            <button class="close" data-close="bankAcctModal"><i class="ph-bold ph-x"></i></button>
+            <h2><span id="baTitle">Bank</span> account</h2>
+            <form id="bankAcctForm">
+                <input type="hidden" id="baServiceId"><input type="hidden" id="baGroup">
+                <label>Account number (optional)
+                    <input id="baAccount" inputmode="numeric" autocomplete="off" placeholder="Account number">
+                </label>
+                <button class="primary-btn full" type="submit"><i class="ph-bold ph-floppy-disk"></i> Save</button>
             </form>
         </div>
     </div>

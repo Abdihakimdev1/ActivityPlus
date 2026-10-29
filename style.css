@@ -1883,3 +1883,47 @@ button.hero-eye:active { transform: scale(0.92); }
         font-size: 16px;
     }
 }
+
+
+/* ---- Wallet services (grouped wallets + attached bank) ---- */
+.svc-card { background: var(--panel); border: 1px solid var(--line); border-radius: 28px; padding: 22px; display: grid; gap: 18px; box-shadow: var(--shadow, 0 8px 24px rgba(15, 23, 42, .05)); }
+.svc-head { display: flex; align-items: center; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.svc-logo { width: 62px; height: 62px; flex-shrink: 0; display: grid; place-items: center; border-radius: 20px; background: linear-gradient(135deg, #22a45d, #0f7a43); color: #fff; font-weight: 900; font-size: 13px; letter-spacing: -.3px; text-align: center; padding: 4px; word-break: break-all; line-height: 1.05; }
+.svc-logo.sm { width: 44px; height: 44px; border-radius: 15px; font-size: 10px; }
+.svc-title { min-width: 0; flex: 1; }
+.svc-title h3 { margin: 0; font-size: 21px; font-weight: 900; letter-spacing: -.5px; }
+.svc-title small { color: var(--muted); font-weight: 600; font-size: 13px; }
+.svc-head .kind-badge { margin: 0; }
+.svc-group { display: grid; gap: 14px; }
+.svc-group.multi { background: var(--bg-subtle); border-radius: 22px; padding: 16px; }
+.svc-group-head { display: flex; align-items: center; gap: 12px; }
+.svc-group-head h4 { margin: 0; font-size: 17px; font-weight: 900; letter-spacing: -.3px; }
+.svc-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
+.svc-wallet { display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 20px; background: var(--bg-subtle); border: 1px solid var(--line); }
+.svc-group.multi .svc-wallet { background: var(--panel); }
+.svc-wallet small, .svc-bank small { display: block; color: var(--muted); font-weight: 600; font-size: 12.5px; }
+.svc-wallet strong { font-size: 20px; font-weight: 900; letter-spacing: -.4px; }
+.svc-wicon { width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border-radius: 13px; font-size: 20px; background: var(--primary-soft); color: var(--primary); }
+.svc-bank { grid-column: 1 / -1; display: grid; gap: 12px; padding: 16px; border-radius: 22px; border: 1px solid var(--line); background: var(--panel); }
+.svc-bank-head { display: flex; align-items: center; gap: 12px; }
+.svc-bank-head > div { flex: 1; min-width: 0; }
+.svc-bank-head strong { font-size: 16px; font-weight: 900; }
+.opt-badge { padding: 5px 11px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-weight: 800; font-size: 12px; }
+.svc-bank-note { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border-radius: 14px; background: var(--bg-subtle); color: var(--muted); font-weight: 600; font-size: 13.5px; }
+.svc-bank-note.acc { color: inherit; font-weight: 800; letter-spacing: .3px; }
+.wallet-preview { display: grid; gap: 8px; padding: 14px; border-radius: 16px; background: var(--bg-subtle); border: 1px solid var(--line); font-size: 13px; }
+.pv-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pv-group b { width: 100%; font-weight: 900; }
+.pv-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-weight: 800; }
+.pv-chip.bank { background: var(--panel); border: 1px solid var(--line); color: inherit; }
+.pv-chip em { font-style: normal; color: var(--muted); font-weight: 600; }
+.ws-title { display: flex; align-items: center; gap: 12px; }
+.ws-title h3 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: -.4px; }
+#walletSettingsView .wallet-manage-card { max-width: 900px; }
+#walletSettingsBtn { white-space: nowrap; }
+@media (max-width: 760px) {
+    .svc-body { grid-template-columns: 1fr; }
+    .svc-card { padding: 16px; border-radius: 24px; }
+    .svc-logo { width: 52px; height: 52px; border-radius: 17px; }
+    .svc-title h3 { font-size: 18px; }
+}
