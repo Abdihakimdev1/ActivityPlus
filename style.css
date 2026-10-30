@@ -1885,45 +1885,55 @@ button.hero-eye:active { transform: scale(0.92); }
 }
 
 
-/* ---- Wallet services (grouped wallets + attached bank) ---- */
-.svc-card { background: var(--panel); border: 1px solid var(--line); border-radius: 28px; padding: 22px; display: grid; gap: 18px; box-shadow: var(--shadow, 0 8px 24px rgba(15, 23, 42, .05)); }
-.svc-head { display: flex; align-items: center; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
-.svc-logo { width: 62px; height: 62px; flex-shrink: 0; display: grid; place-items: center; border-radius: 20px; background: linear-gradient(135deg, #22a45d, #0f7a43); color: #fff; font-weight: 900; font-size: 13px; letter-spacing: -.3px; text-align: center; padding: 4px; word-break: break-all; line-height: 1.05; }
-.svc-logo.sm { width: 44px; height: 44px; border-radius: 15px; font-size: 10px; }
-.svc-title { min-width: 0; flex: 1; }
-.svc-title h3 { margin: 0; font-size: 21px; font-weight: 900; letter-spacing: -.5px; }
-.svc-title small { color: var(--muted); font-weight: 600; font-size: 13px; }
-.svc-head .kind-badge { margin: 0; }
-.svc-group { display: grid; gap: 14px; }
-.svc-group.multi { background: var(--bg-subtle); border-radius: 22px; padding: 16px; }
-.svc-group-head { display: flex; align-items: center; gap: 12px; }
-.svc-group-head h4 { margin: 0; font-size: 17px; font-weight: 900; letter-spacing: -.3px; }
-.svc-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
-.svc-wallet { display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 20px; background: var(--bg-subtle); border: 1px solid var(--line); }
-.svc-group.multi .svc-wallet { background: var(--panel); }
-.svc-wallet small, .svc-bank small { display: block; color: var(--muted); font-weight: 600; font-size: 12.5px; }
-.svc-wallet strong { font-size: 20px; font-weight: 900; letter-spacing: -.4px; }
-.svc-wicon { width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border-radius: 13px; font-size: 20px; background: var(--primary-soft); color: var(--primary); }
-.svc-bank { grid-column: 1 / -1; display: grid; gap: 12px; padding: 16px; border-radius: 22px; border: 1px solid var(--line); background: var(--panel); }
-.svc-bank-head { display: flex; align-items: center; gap: 12px; }
-.svc-bank-head > div { flex: 1; min-width: 0; }
-.svc-bank-head strong { font-size: 16px; font-weight: 900; }
-.opt-badge { padding: 5px 11px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-weight: 800; font-size: 12px; }
-.svc-bank-note { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border-radius: 14px; background: var(--bg-subtle); color: var(--muted); font-weight: 600; font-size: 13.5px; }
-.svc-bank-note.acc { color: inherit; font-weight: 800; letter-spacing: .3px; }
-.wallet-preview { display: grid; gap: 8px; padding: 14px; border-radius: 16px; background: var(--bg-subtle); border: 1px solid var(--line); font-size: 13px; }
-.pv-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.pv-group b { width: 100%; font-weight: 900; }
-.pv-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-weight: 800; }
-.pv-chip.bank { background: var(--panel); border: 1px solid var(--line); color: inherit; }
-.pv-chip em { font-style: normal; color: var(--muted); font-weight: 600; }
-.ws-title { display: flex; align-items: center; gap: 12px; }
-.ws-title h3 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: -.4px; }
-#walletSettingsView .wallet-manage-card { max-width: 900px; }
-#walletSettingsBtn { white-space: nowrap; }
+/* ============================================================
+   v4 - PROVIDER WALLETS (compact cards, small fonts)
+   ============================================================ */
+.pw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; align-items: start; }
+.pw-card { padding: 12px; border-radius: 20px; }
+.pw-head { display: flex; align-items: center; gap: 10px; }
+.pw-logo { width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center; border-radius: 11px; color: #fff; font-weight: 800; font-size: 10.5px; letter-spacing: -0.2px; background: var(--primary); }
+.pw-logo.zaad { background: #16a34a; } .pw-logo.kaashplus { background: #0f766e; } .pw-logo.edahab { background: #ca8a04; }
+.pw-logo.ebirr { background: #0b7a3e; font-size: 17px; font-style: italic; } .pw-logo.telebirr { background: #0284c7; }
+.pw-logo.mpesa { background: #dc2626; } .pw-logo.other { background: #64748b; font-size: 16px; }
+.pw-title { min-width: 0; flex: 1; }
+.pw-title strong { display: block; font-size: 14px; font-weight: 800; letter-spacing: -0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pw-title small { display: block; margin-top: 1px; color: var(--muted); font-weight: 600; font-size: 11px; }
+.pw-menu { width: 30px; height: 30px; border: 0; border-radius: 50%; display: grid; place-items: center; background: var(--bg-subtle); color: var(--text, inherit); cursor: pointer; font-size: 15px; }
+.pw-group { margin-top: 10px; padding: 8px; border-radius: 14px; background: var(--bg-subtle); border: 1px solid var(--line); }
+.pw-gtitle { font-size: 11.5px; font-weight: 800; letter-spacing: 0.2px; margin: 0 2px 7px; }
+.pw-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 7px; }
+.pw-tile { padding: 8px 10px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); min-width: 0; }
+.pw-tile-top { display: flex; align-items: center; gap: 6px; color: var(--primary); font-size: 14px; }
+.pw-tile-top small { color: var(--muted); font-weight: 700; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pw-tile strong { display: block; margin-top: 4px; font-size: 14px; font-weight: 800; letter-spacing: -0.3px; }
+.pw-bank { margin-top: 7px; padding: 8px 10px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+.pw-bank-head { display: flex; align-items: center; gap: 8px; }
+.pw-bank-ico { width: 28px; height: 28px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--primary-soft); color: var(--primary); font-size: 15px; }
+.pw-bank-info { min-width: 0; flex: 1; }
+.pw-bank-info strong { display: block; font-size: 12.5px; font-weight: 800; }
+.pw-bank-info small { display: block; color: var(--muted); font-weight: 600; font-size: 10.5px; }
+.pw-bank-bal { font-size: 12.5px; white-space: nowrap; }
+.pw-opt { padding: 3px 9px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-size: 10.5px; font-weight: 800; }
+.pw-note { display: flex; gap: 6px; align-items: flex-start; margin-top: 7px; padding: 7px 9px; border-radius: 10px; background: var(--bg-subtle); color: var(--muted); font-size: 11px; font-weight: 600; line-height: 1.35; }
+.pw-add { width: 100%; margin-top: 7px; padding: 9px 12px; border: 0; border-radius: 12px; background: var(--primary); color: #fff; font: inherit; font-weight: 800; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.pw-add.inline { width: auto; margin: 0; padding: 7px 12px; font-size: 12px; }
+
+.ws-panel { padding: 16px; margin-bottom: 14px; }
+.ws-panel h3 { font-size: 15px; }
+.ws-panel .muted { font-size: 12px; }
+.prov-list { display: grid; gap: 8px; margin-top: 12px; }
+.prov-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg-subtle); }
+.prov-info { min-width: 0; flex: 1; }
+.prov-info strong { display: block; font-size: 13.5px; font-weight: 800; }
+.prov-info small { display: block; color: var(--muted); font-weight: 600; font-size: 11px; }
+.ws-hint { padding: 9px 11px; border-radius: 12px; background: var(--bg-subtle); color: var(--muted); font-size: 12px; font-weight: 600; line-height: 1.45; }
+.ws-hint b { color: inherit; }
+#walletSettings .wm-item { padding: 10px 12px; }
+#walletSettings .wm-info strong { font-size: 14px; }
+#walletSettings .wm-info small { font-size: 11px; }
+#walletSettings .wm-bal { font-size: 12.5px; }
+
 @media (max-width: 760px) {
-    .svc-body { grid-template-columns: 1fr; }
-    .svc-card { padding: 16px; border-radius: 24px; }
-    .svc-logo { width: 52px; height: 52px; border-radius: 17px; }
-    .svc-title h3 { font-size: 18px; }
+    .pw-grid { grid-template-columns: 1fr; }
+    .pw-tiles { grid-template-columns: 1fr 1fr; }
 }

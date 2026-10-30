@@ -103,7 +103,6 @@ const defaultData = {
     ],
     budgets: [],
     savingsTx: [],
-    services: [],
     rates: { USD_SLSH: 0, USD_ETB: 0 }
 };
 
@@ -134,7 +133,6 @@ const normalizeData = (value) => {
         wallets: wallets.map(normalizeWallet),
         budgets: Array.isArray(x.budgets) ? x.budgets : [],
         savingsTx: Array.isArray(x.savingsTx) ? x.savingsTx : [],
-        services: Array.isArray(x.services) ? x.services : [],
         rates: {
             USD_SLSH: Number(x.rates?.USD_SLSH) > 0 ? Number(x.rates.USD_SLSH) : 0,
             USD_ETB: Number(x.rates?.USD_ETB) > 0 ? Number(x.rates.USD_ETB) : 0
@@ -207,22 +205,6 @@ const fmt = (n, c) => ({ USD: "$", SLSH: "SLSH ", ETB: "ETB " }[c] || "") + Numb
 const CURS = ["USD", "SLSH", "ETB"];
 const CUR_NAMES = { USD: "US DOLLAR", SLSH: "SL SHILLING", ETB: "ET BIRR" };
 const curName = c => CUR_NAMES[c] || c;
-
-// Each service is created together with ALL its wallets and its (optional) bank account.
-// Bank accounts cannot be created on their own: they only exist inside a service.
-const WALLET_SERVICES = {
-    ZAAD:      { label: "ZAAD", title: "ZAAD SERVICE", country: "Somaliland", groups: [{ title: "ZAAD", currencies: ["USD", "SLSH"], bank: "Darasalaam Bank" }] },
-    KAASHPLUS: { label: "KAASHPLUS", title: "KAASHPLUS", country: "Somaliland", groups: [{ title: "KAASHPLUS", currencies: ["USD", "SLSH"], bank: "Darasalaam Bank" }] },
-    EDAHAB:    { label: "EDAHAB", title: "EDAHAB", country: "Somaliland", groups: [{ title: "EDAHAB", currencies: ["USD", "SLSH"], bank: "Dahabshiil Bank" }] },
-    EBIRR:     { label: "EBIRR (Kaafi + Coopay)", title: "EBIRR", country: "Ethiopia", groups: [
-                    { title: "EBIRR KAAFI", short: "KAAFI", currencies: ["ETB"], bank: "Kaafi MF Bank" },
-                    { title: "EBIRR COOPAY", short: "COOPAY", currencies: ["ETB"], bank: "CBO Bank" }] },
-    TELEBIRR:  { label: "TELEBIRR", title: "TELEBIRR", country: "Ethiopia", groups: [{ title: "TELEBIRR", currencies: ["ETB"], bank: "Tele Acc" }] },
-    MPESA:     { label: "MPESA", title: "MPESA", country: "Ethiopia", groups: [{ title: "MPESA", currencies: ["ETB"], bank: "M-Pesa Bank" }] },
-    CASH:      { label: "CASH", title: "CASH", country: "", custom: "cash" },
-    OTHER:     { label: "OTHER (type the name)", title: "OTHER", country: "", custom: "other" }
-};
-
 
 // Balance of one wallet: income/expense/transfer plus both sides of an exchange
 function walletBal(w) {
@@ -447,75 +429,91 @@ function goalHTML(g) {
     </div>`;
 }
 
-function walletCardHTML(w) {
-    const kind = w.kind || 'Personal';
-    const mine = data.transactions.filter(t => t.wallet === w.name && t.currency === w.currency);
-    const income = mine.filter(t => t.type === 'income').reduce((a, t) => a + Number(t.amount), 0);
-    const spent = mine.filter(t => t.type === 'expense').reduce((a, t) => a + Number(t.amount), 0);
-    const acc = w.account ? ' · Acc ····' + esc(String(w.account).slice(-4)) : '';
-    return `<div class="wallet-card kind-${kind.toLowerCase()}">
-        <div class="wallet-top">
-            <div class="goal-icon"><i class="ph-fill ${kind === 'Business' ? 'ph-briefcase' : 'ph-user'}"></i></div>
-            <span class="kind-badge ${kind.toLowerCase()}">${kind}</span>
-            <button class="small-btn delete" onclick="deleteWallet(${w.id})"><i class="ph-bold ph-trash"></i></button>
-        </div>
-        <h3 class="wallet-fullname">${esc(w.name)}</h3>
-        <div class="muted">${esc(w.type || 'Wallet')} · ${curName(w.currency)}${acc}</div>
-        <div class="wallet-balance">${fmt(walletBal(w), w.currency)}</div>
-        <div class="muted">Income ${fmt(income, w.currency)} · Expenses ${fmt(spent, w.currency)}</div>
+// ---- Wallet providers (what gets created together, and its optional bank) ----
+const PROVIDERS = [
+    { id: 'ZAAD', name: 'ZAAD SERVICE', country: 'Somaliland', badge: 'ZAAD', cls: 'zaad',
+      groups: [{ key: 'ZAAD', currencies: ['USD', 'SLSH'], bank: 'Darasalaam Bank' }] },
+    { id: 'KAASHPLUS', name: 'KAASHPLUS', country: 'Somaliland', badge: 'K+', cls: 'kaashplus',
+      groups: [{ key: 'KAASHPLUS', currencies: ['USD', 'SLSH'], bank: 'Darasalaam Bank' }] },
+    { id: 'EDAHAB', name: 'EDAHAB', country: 'Somaliland', badge: 'eD', cls: 'edahab',
+      groups: [{ key: 'EDAHAB', currencies: ['USD', 'SLSH'], bank: 'Dahabshiil Bank' }] },
+    { id: 'EBIRR', name: 'EBIRR', country: 'Ethiopia', badge: 'e', cls: 'ebirr',
+      groups: [
+        { key: 'EBIRR KAAFI', currencies: ['ETB'], bank: 'Kaafi MF Bank' },
+        { key: 'EBIRR COOPAY', currencies: ['ETB'], bank: 'CBO Bank' }
+      ] },
+    { id: 'TELEBIRR', name: 'TELEBIRR', country: 'Ethiopia', badge: 'tB', cls: 'telebirr',
+      groups: [{ key: 'TELEBIRR', currencies: ['ETB'], bank: 'Tele Account' }] },
+    { id: 'MPESA', name: 'M-PESA', country: 'Ethiopia', badge: 'M', cls: 'mpesa',
+      groups: [{ key: 'MPESA', currencies: ['ETB'], bank: 'MPESA Bank' }] }
+];
+const kindOf = w => w.kind || 'Personal';
+const groupWallets = (pid, gkey, kind) => data.wallets.filter(w => w.provider === pid && w.group === gkey && kindOf(w) === kind);
+
+function groupHTML(p, g, kind) {
+    const all = groupWallets(p.id, g.key, kind);
+    const wal = all.filter(w => !w.isBank), banks = all.filter(w => w.isBank);
+    const free = g.currencies.filter(c => !banks.some(b => b.currency === c));
+    const multi = p.groups.length > 1;
+    const tiles = wal.map(w => `<div class="pw-tile">
+        <div class="pw-tile-top"><i class="ph-fill ph-wallet"></i><small>${esc(w.currency)} Wallet</small></div>
+        <strong>${fmt(walletBal(w), w.currency)}</strong></div>`).join('');
+    const bankRows = banks.map(b => `<div class="pw-bank">
+        <div class="pw-bank-head"><span class="pw-bank-ico"><i class="ph-fill ph-bank"></i></span>
+            <div class="pw-bank-info"><strong>${esc(g.bank)}</strong><small>Bank Account · ${esc(b.currency)}${b.account ? ' · ····' + esc(String(b.account).slice(-4)) : ''}</small></div>
+            <strong class="pw-bank-bal">${fmt(walletBal(b), b.currency)}</strong></div></div>`).join('');
+    const note = banks.length ? '' : `<div class="pw-bank">
+        <div class="pw-bank-head"><span class="pw-bank-ico"><i class="ph-fill ph-bank"></i></span>
+            <div class="pw-bank-info"><strong>${esc(g.bank)}</strong><small>Bank Account</small></div>
+            <span class="pw-opt">Ikhtiyaari</span></div>
+        <div class="pw-note"><i class="ph ph-info"></i><span>Account number-ka waxaa lagu daraa marka la diyaariyo.</span></div></div>`;
+    const add = free.length ? `<button class="pw-add" onclick="openBankModal('${p.id}','${kind}','${g.key}')"><i class="ph-bold ph-plus"></i> Add Bank Account</button>` : '';
+    return `<div class="pw-group">${multi ? `<div class="pw-gtitle">${esc(g.key)}</div>` : ''}
+        <div class="pw-tiles">${tiles}</div>${bankRows}${note}${add}</div>`;
+}
+
+function providerCardHTML(p, kind) {
+    return `<div class="panel pw-card">
+        <div class="pw-head"><span class="pw-logo ${p.cls}">${esc(p.badge)}</span>
+            <div class="pw-title"><strong>${esc(p.name)}</strong><small>${esc(p.country)} · Mobile Money</small></div>
+            <button class="pw-menu" onclick="showSection('walletSettings')" title="Wallet settings"><i class="ph-bold ph-dots-three-vertical"></i></button></div>
+        ${p.groups.map(g => groupHTML(p, g, kind)).join('')}
+    </div>`;
+}
+
+function legacyCardHTML(list) {
+    return `<div class="panel pw-card">
+        <div class="pw-head"><span class="pw-logo other"><i class="ph-fill ph-wallet"></i></span>
+            <div class="pw-title"><strong>OTHER WALLETS</strong><small>Created before providers</small></div></div>
+        <div class="pw-group"><div class="pw-tiles">${list.map(w => `<div class="pw-tile">
+            <div class="pw-tile-top"><i class="ph-fill ph-wallet"></i><small>${esc(w.name)}</small></div>
+            <strong>${fmt(walletBal(w), w.currency)}</strong></div>`).join('')}</div></div>
     </div>`;
 }
 
 let walletQuery = '';
-const walletMatches = w => !walletQuery || [w.name, w.type, w.kind, w.currency, curName(w.currency), w.account || '', w.group || '']
+const walletMatches = w => !walletQuery || [w.name, w.type, w.kind, w.provider || '', w.group || '', w.currency, curName(w.currency), w.account || '']
     .join(' ').toLowerCase().includes(walletQuery);
 
-const svcInitials = t => t.replace(/SERVICE/, '').trim().slice(0, 5);
-
-function serviceCardHTML(s) {
-    const kind = s.kind || 'Personal';
-    const multi = s.groups.length > 1;
-    const groups = s.groups.map(g => {
-        const ws = data.wallets.filter(w => w.serviceId === s.id && w.group === g.title && walletMatches(w));
-        const boxes = ws.map(w => `<div class="svc-wallet">
-            <div class="svc-wicon"><i class="ph-fill ph-wallet"></i></div>
-            <div><small>${esc(w.currency)} Wallet</small><strong>${mask(fmt(walletBal(w), w.currency))}</strong></div>
-        </div>`).join('');
-        const bank = g.bank ? `<div class="svc-bank">
-            <div class="svc-bank-head">
-                <span class="svc-wicon bank"><i class="ph-fill ph-bank"></i></span>
-                <div><strong>${esc(g.bank)}</strong><small>Bank Account</small></div>
-                <span class="opt-badge">Optional</span>
+function renderWallets() {
+    $("#walletGrid").innerHTML = ['Personal', 'Business'].map(kind => {
+        const all = data.wallets.filter(w => kindOf(w) === kind);
+        const tot = kindTotals(kind);
+        const chips = CURS.filter(c => all.some(w => w.currency === c)).map(c => `<span class="group-chip">${fmt(tot[c], c)}</span>`).join('');
+        const cards = PROVIDERS.filter(p => data.wallets.some(w => w.provider === p.id && kindOf(w) === kind) && (!walletQuery ||
+            p.name.toLowerCase().includes(walletQuery) || data.wallets.some(w => w.provider === p.id && kindOf(w) === kind && walletMatches(w))))
+            .map(p => providerCardHTML(p, kind));
+        const legacy = all.filter(w => !w.provider && walletMatches(w));
+        if (legacy.length) cards.push(legacyCardHTML(legacy));
+        return `<div class="wallet-group">
+            <div class="group-head ${kind.toLowerCase()}">
+                <span class="group-ico"><i class="ph-fill ${kind === 'Business' ? 'ph-briefcase' : 'ph-user'}"></i></span>
+                <div><h3>${kind} Wallets</h3><small>${all.length} wallet${all.length === 1 ? '' : 's'}</small></div>
+                <div class="group-chips">${chips}</div>
             </div>
-            ${g.account
-                ? `<div class="svc-bank-note acc"><i class="ph-bold ph-hash"></i> ${esc(g.account)}</div>`
-                : `<div class="svc-bank-note"><i class="ph-bold ph-info"></i> The account number is added when it is ready.</div>`}
-            <button class="primary-btn full" onclick="openBankAcct('${s.id}', '${esc(g.title).replace(/'/g, "\\'")}')"><i class="ph-bold ${g.account ? 'ph-pencil-simple' : 'ph-plus'}"></i> ${g.account ? 'Edit' : 'Add'} Bank Account</button>
-        </div>` : '';
-        return `<div class="svc-group ${multi ? 'multi' : ''}">
-            ${multi ? `<div class="svc-group-head"><span class="svc-logo sm">${esc(g.short || svcInitials(g.title))}</span><h4>${esc(g.title)}</h4></div>` : ''}
-            <div class="svc-body">${boxes}${bank}</div>
+            ${cards.length ? `<div class="pw-grid">${cards.join('')}</div>` : `<div class="panel empty">${walletQuery ? `No ${kind} wallets match your search.` : `No ${kind} wallets yet. Tap Settings, then New Wallet.`}</div>`}
         </div>`;
     }).join('');
-    return `<div class="svc-card kind-${kind.toLowerCase()}">
-        <div class="svc-head">
-            <span class="svc-logo">${esc(svcInitials(s.title))}</span>
-            <div class="svc-title"><h3>${esc(s.title)}</h3><small>${esc([s.country, 'Mobile Money'].filter(Boolean).join(' · '))}</small></div>
-            <span class="kind-badge ${kind.toLowerCase()}">${kind}</span>
-            <button class="small-btn delete" onclick="deleteService('${s.id}')" title="Delete service"><i class="ph-bold ph-trash"></i></button>
-        </div>
-        ${groups}
-    </div>`;
-}
-
-function renderWallets() {
-    const services = (data.services || []).filter(s => !walletQuery || [s.title, s.country, s.kind, ...s.groups.map(g => g.title + ' ' + g.bank)].join(' ').toLowerCase().includes(walletQuery)
-        || data.wallets.some(w => w.serviceId === s.id && walletMatches(w)));
-    const legacy = data.wallets.filter(w => !w.serviceId && walletMatches(w));
-    let out = services.map(serviceCardHTML).join('');
-    if (legacy.length) out += `<div class="wallet-group"><div class="group-head"><span class="group-ico"><i class="ph-fill ph-wallet"></i></span><div><h3>Other wallets</h3><small>${legacy.length} wallet${legacy.length === 1 ? '' : 's'}</small></div></div><div class="wallet-grid">${legacy.map(walletCardHTML).join('')}</div></div>`;
-    if (!out) out = `<div class="panel empty">${walletQuery ? 'No wallets match your search.' : 'No wallets yet. Tap “New Wallet” and choose a service.'}</div>`;
-    $("#walletGrid").innerHTML = out;
 }
 
 function renderBudgets() {
@@ -606,7 +604,7 @@ function populateCategories() {
 function showSection(id) {
     $$('.section').forEach(s => s.classList.remove('active-section'));
     $('#' + id).classList.add('active-section');
-    $$('.nav-link').forEach(b => b.classList.toggle('active', b.dataset.section === id));
+    $$('.nav-link').forEach(b => b.classList.toggle('active', b.dataset.section === (id === 'walletSettings' ? 'wallets' : id)));
     $('#pageTitle').textContent = {
         dashboard: 'Dashboard',
         transactions: 'Transactions',
@@ -614,6 +612,7 @@ function showSection(id) {
         budgets: 'Budgets',
         savings: 'Savings Goals',
         wallets: 'Wallets',
+        walletSettings: 'Wallet Settings',
         settings: 'Settings & Backup'
     }[id];
 }
@@ -746,6 +745,7 @@ function renderWalletManage() {
             </div>
         </div>`;
     }).join('');
+    renderProviderList();
     const nm = (currentUser?.user_metadata?.full_name || currentUser?.user_metadata?.name || currentUser?.email || 'A').trim();
     $('#profileInitial').textContent = nm.charAt(0).toUpperCase();
 }
@@ -784,17 +784,8 @@ $('#walletEditForm').onsubmit = async e => {
     if (await save(true, 'Saving wallet...')) toast('Wallet updated.');
 };
 
-function setWalletView(view) {   // 'list' | 'settings'
-    $('#walletsMain').classList.toggle('is-hidden', view === 'settings');
-    $('#walletSettingsView').classList.toggle('is-hidden', view !== 'settings');
-}
-$('#walletSettingsBtn').onclick = () => setWalletView('settings');
-$('#walletSettingsBack').onclick = () => setWalletView('list');
-$$('.nav-link').forEach(b => b.addEventListener('click', () => { if (b.dataset.section === 'wallets') setWalletView('list'); }));
-$('#profileBtn').onclick = () => {
-    showSection('wallets');
-    setWalletView('settings');
-};
+$('#profileBtn').onclick = () => showSection('walletSettings');
+$('#walletSettingsBtn').onclick = () => showSection('walletSettings');
 
 // ============================================================
 // EXCHANGE RATES (Settings)
@@ -1018,7 +1009,35 @@ window.deleteTx = id => {
 // ============================================================
 // WALLETS
 // ============================================================
-$('#addWallet').onclick = () => { refreshWalletForm(); $('#walletModal').classList.add('show'); };
+function renderProviderList() {
+    const list = $('#providerList');
+    if (!list) return;
+    list.innerHTML = PROVIDERS.map(p => {
+        const curs = [...new Set(p.groups.flatMap(g => g.currencies))].join(' · ');
+        const n = data.wallets.filter(w => w.provider === p.id).length;
+        return `<div class="prov-row">
+            <span class="pw-logo ${p.cls}">${esc(p.badge)}</span>
+            <div class="prov-info"><strong>${esc(p.name)}</strong><small>${esc(p.country)} · ${esc(curs)}${n ? ' · ' + n + ' created' : ''}</small></div>
+            <button class="pw-add inline" onclick="openProviderModal('${p.id}')"><i class="ph-bold ph-plus"></i> Create</button>
+        </div>`;
+    }).join('');
+}
+
+function updateProviderHint() {
+    const p = PROVIDERS.find(x => x.id === $('#walletProvider').value);
+    if (!p) return;
+    const names = p.groups.flatMap(g => g.currencies.map(c => `${g.key} ${c}`));
+    $('#walletProviderHint').innerHTML = `Creates: <b>${esc(names.join(', '))}</b>.<br>Bank: ${esc(p.groups.map(g => g.bank).join(', '))} (optional, added later from the Wallets page).`;
+}
+
+window.openProviderModal = id => {
+    $('#walletProvider').innerHTML = PROVIDERS.map(p => `<option value="${p.id}">${esc(p.name)} (${esc(p.country)})</option>`).join('');
+    if (id) $('#walletProvider').value = id;
+    updateProviderHint();
+    $('#walletModal').classList.add('show');
+};
+$('#addWallet').onclick = () => openProviderModal();
+$('#walletProvider').addEventListener('change', updateProviderHint);
 
 function uniqueWalletName(base, kind) {
     const taken = n => data.wallets.some(w => w.name.toLowerCase() === n.toLowerCase());
@@ -1029,101 +1048,69 @@ function uniqueWalletName(base, kind) {
     return `${base} ${i}`;
 }
 
-// What the chosen service will create (groups with wallets + attached bank)
-function serviceBlueprint() {
-    const key = $('#walletService').value;
-    const def = WALLET_SERVICES[key];
-    if (!def) return null;
-    if (def.custom) {
-        const cur = $('#walletCurrency').value;
-        const nm = def.custom === 'cash' ? 'CASH' : ($('#walletName').value.trim().toUpperCase() || 'OTHER');
-        return { key, title: nm, country: '', groups: [{ title: nm, currencies: [cur], bank: '', type: def.custom === 'cash' ? 'Cash' : 'E-Wallet' }] };
-    }
-    return { key, title: def.title, country: def.country, groups: def.groups.map(g => ({ ...g, type: 'E-Wallet' })) };
-}
-
-function refreshWalletForm() {
-    const def = WALLET_SERVICES[$('#walletService').value];
-    $('#walletCustomRow').classList.toggle('is-hidden', !def?.custom);
-    $('#walletNameRow').classList.toggle('is-hidden', def?.custom !== 'other');
-    $('#walletName').required = def?.custom === 'other';
-    const bp = serviceBlueprint();
-    if (!bp) return;
-    $('#walletPreview').innerHTML = `<strong>Will be created together:</strong>` + bp.groups.map(g =>
-        `<div class="pv-group">${bp.groups.length > 1 ? `<b>${esc(g.title)}</b>` : ''}` +
-        g.currencies.map(c => `<span class="pv-chip"><i class="ph-fill ph-wallet"></i> ${esc(c)} wallet</span>`).join('') +
-        (g.bank ? `<span class="pv-chip bank"><i class="ph-fill ph-bank"></i> ${esc(g.bank)} <em>(optional)</em></span>` : '') +
-        `</div>`).join('');
-}
-
-$('#walletService').innerHTML = Object.entries(WALLET_SERVICES).map(([k, d]) => `<option value="${k}">${esc(d.label)}</option>`).join('');
-$('#walletService').addEventListener('change', refreshWalletForm);
-$('#walletCurrency').addEventListener('change', refreshWalletForm);
-$('#walletName').addEventListener('input', refreshWalletForm);
-
 $('#walletForm').onsubmit = async e => {
     e.preventDefault();
-    const bp = serviceBlueprint();
-    if (!bp) return;
-    const fullName = $('#walletFullName').value.trim();
+    const p = PROVIDERS.find(x => x.id === $('#walletProvider').value);
+    if (!p) return;
     const kind = $('#walletKind').value === 'Business' ? 'Business' : 'Personal';
-    const serviceId = 'svc' + Date.now();
+    if (data.wallets.some(w => w.provider === p.id && kindOf(w) === kind)) return toast(`${p.name} (${kind}) already exists.`);
+    const fullName = $('#walletFullName').value.trim();
     const made = [];
-    let n = 0;
-    data.services = data.services || [];
-    data.services.push({
-        id: serviceId, key: bp.key, title: bp.title, country: bp.country, kind, fullName,
-        groups: bp.groups.map(g => ({ title: g.title, bank: g.bank || '', account: '' }))
-    });
-    bp.groups.forEach(g => {
-        g.currencies.forEach(currency => {
-            const name = uniqueWalletName(`${g.title} ${currency}`.replace(/^CASH CASH/, 'CASH'), kind);
-            made.push(name);
-            data.wallets.push({ id: Date.now() + (++n), name, fullName, kind, account: '', type: g.type, currency, serviceId, group: g.title });
-        });
-    });
+    let i = 0;
+    p.groups.forEach(g => g.currencies.forEach(currency => {
+        const name = uniqueWalletName(`${g.key} ${currency}`, kind);
+        made.push(name);
+        data.wallets.push({ id: Date.now() + (i++), name, fullName, kind, account: '', type: 'E-Wallet', currency, provider: p.id, group: g.key, isBank: false });
+    }));
     e.target.reset();
     setWalletKind('Personal');
     closeModal('walletModal');
-    if (await save(true, 'Creating wallet...')) toast('Created: ' + made.join(', '));
+    if (await save(true, 'Creating wallet...')) toast('Wallet created: ' + made.join(', '));
+    showSection('wallets');
 };
 
-// ---- Bank account number (bank is attached to its service, never created alone) ----
-window.openBankAcct = (serviceId, group) => {
-    const s = (data.services || []).find(x => x.id === serviceId);
-    const g = s?.groups.find(x => x.title === group);
+// Bank account: only after the provider wallet exists, and linked to it
+window.openBankModal = (pid, kind, gkey) => {
+    const p = PROVIDERS.find(x => x.id === pid);
+    const g = p?.groups.find(x => x.key === gkey);
     if (!g) return;
-    $('#baServiceId').value = serviceId;
-    $('#baGroup').value = group;
-    $('#baTitle').textContent = g.bank;
-    $('#baAccount').value = g.account || '';
-    $('#bankAcctModal').classList.add('show');
+    const free = g.currencies.filter(c => !groupWallets(pid, gkey, kind).some(w => w.isBank && w.currency === c));
+    if (!free.length) return toast('Bank account already added.');
+    $('#bkProvider').value = pid; $('#bkKind').value = kind; $('#bkGroup').value = gkey;
+    $('#bkInfo').innerHTML = `<b>${esc(g.bank)}</b> will be linked to <b>${esc(g.key)}</b>.`;
+    $('#bkCurrency').innerHTML = free.map(c => `<option value="${c}">${esc(curName(c))}</option>`).join('');
+    $('#bkAccount').value = '';
+    $('#bankModal').classList.add('show');
 };
-$('#bankAcctForm').onsubmit = async e => {
+
+$('#bankForm').onsubmit = async e => {
     e.preventDefault();
-    const s = (data.services || []).find(x => x.id === $('#baServiceId').value);
-    const g = s?.groups.find(x => x.title === $('#baGroup').value);
+    const pid = $('#bkProvider').value, kind = $('#bkKind').value, gkey = $('#bkGroup').value;
+    const p = PROVIDERS.find(x => x.id === pid);
+    const g = p?.groups.find(x => x.key === gkey);
+    const account = $('#bkAccount').value.trim();
     if (!g) return;
-    g.account = $('#baAccount').value.trim();
-    closeModal('bankAcctModal');
-    if (await save(true, 'Saving bank account...')) toast(g.account ? 'Bank account saved.' : 'Bank account cleared.');
+    if (!account) return toast('Enter the account number.');
+    const currency = $('#bkCurrency').value;
+    const parent = groupWallets(pid, gkey, kind).find(w => !w.isBank);
+    if (!parent) return toast('Create the wallet first.');
+    const name = uniqueWalletName(`${g.bank.toUpperCase()} ${currency}`, kind);
+    data.wallets.push({ id: Date.now(), name, fullName: parent.fullName || '', kind, account, type: 'Bank', currency, provider: pid, group: gkey, isBank: true });
+    closeModal('bankModal');
+    if (await save(true, 'Adding bank account...')) toast('Bank account added: ' + name);
 };
-
-window.deleteService = id => requestSecureAction(async () => {
-    const s = (data.services || []).find(x => x.id === id);
-    if (!s) return;
-    if (data.wallets.filter(w => w.serviceId !== id).length < 1) return toast('Keep at least one wallet.');
-    if (!confirm(`Delete ${s.title} with all its wallets and bank account? Existing transactions will remain.`)) return;
-    data.wallets = data.wallets.filter(w => w.serviceId !== id);
-    data.services = data.services.filter(x => x.id !== id);
-    if (await save(true, 'Deleting service...')) toast(s.title + ' deleted.');
-});
 
 window.deleteWallet = id => {
     if (data.wallets.length <= 1) return toast('Keep at least one wallet.');
     const w = data.wallets.find(x => x.id === id);
-    if (confirm(`Delete ${w.name}? Existing transactions will remain.`)) {
-        data.wallets = data.wallets.filter(x => x.id !== id);
+    const linked = (!w.isBank && w.provider)
+        ? data.wallets.filter(x => x.isBank && x.provider === w.provider && x.group === w.group && kindOf(x) === kindOf(w))
+        : [];
+    const lastOfGroup = linked.length && !data.wallets.some(x => x.id !== w.id && !x.isBank && x.provider === w.provider && x.group === w.group && kindOf(x) === kindOf(w));
+    const gone = lastOfGroup ? [w.id, ...linked.map(x => x.id)] : [w.id];
+    if (data.wallets.length - gone.length < 1) return toast('Keep at least one wallet.');
+    if (confirm(`Delete ${w.name}${lastOfGroup ? ' and its linked bank account' : ''}? Existing transactions will remain.`)) {
+        data.wallets = data.wallets.filter(x => !gone.includes(x.id));
         save();
     }
 };
@@ -1252,6 +1239,7 @@ const SUPABASE_URL = "https://supvvuzyuaptstedwqsu.supabase.co";
 const SUPABASE_KEY = "sb_publishable_jeX4deGHUQgW9iHWD__dsg_dh-mxrml";
 const sb = window.supabase?.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+
 const loginScreen = $("#loginScreen");
 const appShell = $$(".sidebar, .main");
 
@@ -1365,7 +1353,7 @@ $("#settingsThemeBtn").onclick = () => {
 };
 
 // ============================================================
-// WALLET KIND
+// WALLET PRESETS
 // ============================================================
 function setWalletKind(kind) {
     $("#walletKind").value = kind;
@@ -1373,7 +1361,6 @@ function setWalletKind(kind) {
 }
 $$("#walletKindSeg .seg-btn").forEach(b => b.addEventListener("click", () => setWalletKind(b.dataset.kind)));
 
-refreshWalletForm();
 
 // ============================================================
 // CURRENCY WALLET SELECTS

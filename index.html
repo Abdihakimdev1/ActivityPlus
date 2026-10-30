@@ -388,40 +388,48 @@
 
         <!-- Wallets -->
         <section id="wallets" class="section">
-            <div id="walletsMain">
-                <div class="section-toolbar">
-                    <div>
-                        <p>Mobile money services with their wallets and bank accounts.</p>
-                    </div>
-                    <div class="toolbar-actions">
-                        <div class="wallet-search"><i class="ph-bold ph-magnifying-glass"></i><input id="walletSearch" placeholder="Search wallets..." autocomplete="off"></div>
-                        <button class="secondary-btn" id="walletSettingsBtn"><i class="ph-fill ph-gear-six"></i> Settings</button>
-                        <button class="primary-btn" id="addWallet"><i class="ph-bold ph-plus"></i> New Wallet</button>
-                    </div>
+            <div class="section-toolbar">
+                <div>
+                    <p>Wallets are grouped by provider, each with its own bank account.</p>
                 </div>
-                <div id="walletGrid" class="wallet-groups"></div>
+                <div class="toolbar-actions">
+                    <div class="wallet-search"><i class="ph-bold ph-magnifying-glass"></i><input id="walletSearch" placeholder="Search wallets..." autocomplete="off"></div>
+                    <button class="secondary-btn" id="walletSettingsBtn"><i class="ph-bold ph-gear"></i> Settings</button>
+                </div>
             </div>
-            <div id="walletSettingsView" class="is-hidden">
-                <div class="section-toolbar">
-                    <div class="ws-title">
-                        <button class="small-btn" id="walletSettingsBack" title="Back to wallets"><i class="ph-bold ph-arrow-left"></i></button>
-                        <h3>Wallet Settings</h3>
+            <div id="walletGrid" class="wallet-groups"></div>
+        </section>
+
+        <!-- Wallet settings (separate from main Settings) -->
+        <section id="walletSettings" class="section">
+            <div class="section-toolbar">
+                <div><button class="secondary-btn" data-go="wallets"><i class="ph-bold ph-arrow-left"></i> Wallets</button></div>
+                <div class="toolbar-actions">
+                    <button class="primary-btn" id="addWallet"><i class="ph-bold ph-plus"></i> New Wallet</button>
+                </div>
+            </div>
+            <div class="panel ws-panel">
+                <div class="settings-title">
+                    <div class="settings-icon"><i class="ph-fill ph-wallet"></i></div>
+                    <div>
+                        <h3>Wallet providers</h3>
+                        <p class="muted">Create a provider and all its wallets are made together. Add the bank account later from the Wallets page.</p>
                     </div>
                 </div>
-                <div class="panel settings-card wallet-manage-card" id="walletManageCard">
-                    <div class="settings-title">
-                        <div class="settings-icon"><i class="ph-fill ph-wallet"></i></div>
-                        <div>
-                            <h3>Manage Wallets</h3>
-                            <p class="muted">Wallet owners (full names) are only shown here. Edit or delete wallets from this list.</p>
-                        </div>
+                <div id="providerList" class="prov-list"></div>
+            </div>
+            <div class="panel ws-panel" id="walletManageCard">
+                <div class="settings-title">
+                    <div class="settings-icon"><i class="ph-fill ph-list-bullets"></i></div>
+                    <div>
+                        <h3>Manage wallets</h3>
+                        <p class="muted">Owner names are only shown here. Edit or delete wallets from this list.</p>
                     </div>
-                    <div id="walletManageList" class="wm-list"></div>
                 </div>
+                <div id="walletManageList" class="wm-list"></div>
             </div>
         </section>
 
-        <!-- Settings -->
         <section id="settings" class="section">
             <div class="section-toolbar">
                 <div>
@@ -669,31 +677,23 @@
                     </div>
                     <input type="hidden" id="walletKind" value="Personal">
                 </div>
-                <label>Wallet / Service<select id="walletService"></select></label>
-                <label id="walletCustomRow" class="is-hidden">Currency
-                    <select id="walletCurrency">
-                        <option value="USD">US DOLLAR</option>
-                        <option value="SLSH">SL SHILLING</option>
-                        <option value="ETB">ET BIRR</option>
-                    </select>
-                </label>
-                <label id="walletNameRow" class="is-hidden">Service name<input id="walletName" placeholder="Type the service / bank name"></label>
-                <div id="walletPreview" class="wallet-preview"></div>
+                <label>Provider<select id="walletProvider"></select></label>
+                <div class="ws-hint" id="walletProviderHint"></div>
                 <button class="primary-btn full" type="submit"><i class="ph-bold ph-wallet"></i> Create Wallet</button>
             </form>
         </div>
     </div>
 
-    <div class="modal" id="bankAcctModal">
+    <div class="modal" id="bankModal">
         <div class="modal-box">
-            <button class="close" data-close="bankAcctModal"><i class="ph-bold ph-x"></i></button>
-            <h2><span id="baTitle">Bank</span> account</h2>
-            <form id="bankAcctForm">
-                <input type="hidden" id="baServiceId"><input type="hidden" id="baGroup">
-                <label>Account number (optional)
-                    <input id="baAccount" inputmode="numeric" autocomplete="off" placeholder="Account number">
-                </label>
-                <button class="primary-btn full" type="submit"><i class="ph-bold ph-floppy-disk"></i> Save</button>
+            <button class="close" data-close="bankModal"><i class="ph-bold ph-x"></i></button>
+            <h2>Add Bank Account</h2>
+            <form id="bankForm">
+                <input type="hidden" id="bkProvider"><input type="hidden" id="bkKind"><input type="hidden" id="bkGroup">
+                <div class="ws-hint" id="bkInfo"></div>
+                <label>Currency<select id="bkCurrency"></select></label>
+                <label>Account number<input id="bkAccount" required inputmode="numeric" autocomplete="off" placeholder="Account number"></label>
+                <button class="primary-btn full" type="submit"><i class="ph-bold ph-bank"></i> Add Bank Account</button>
             </form>
         </div>
     </div>
