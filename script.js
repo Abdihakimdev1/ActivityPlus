@@ -431,6 +431,8 @@ function goalHTML(g) {
 
 // ---- Wallet providers (what gets created together, and its optional bank) ----
 const PROVIDERS = [
+    { id: 'CASH', name: 'CASH', country: 'On hand', sub: 'Physical cash', badge: 'Cash', cls: 'cash', pick: true,
+      groups: [{ key: 'CASH', currencies: ['USD', 'SLSH', 'ETB'], bank: null }] },
     { id: 'ZAAD', name: 'ZAAD SERVICE', country: 'Somaliland', badge: 'ZAAD', cls: 'zaad',
       groups: [{ key: 'ZAAD', currencies: ['USD', 'SLSH'], bank: 'Darasalaam Bank' }] },
     { id: 'KAASHPLUS', name: 'KAASHPLUS', country: 'Somaliland', badge: 'K+', cls: 'kaashplus',
@@ -455,6 +457,7 @@ function groupHTML(p, g, kind) {
     const wal = all.filter(w => !w.isBank), banks = all.filter(w => w.isBank);
     const free = g.currencies.filter(c => !banks.some(b => b.currency === c));
     const multi = p.groups.length > 1;
+    const hasBank = !!g.bank;
     const tiles = wal.map(w => `<div class="pw-tile">
         <div class="pw-tile-top"><i class="ph-fill ph-wallet"></i><small>${esc(w.currency)} Wallet</small></div>
         <strong>${fmt(walletBal(w), w.currency)}</strong></div>`).join('');
@@ -462,12 +465,12 @@ function groupHTML(p, g, kind) {
         <div class="pw-bank-head"><span class="pw-bank-ico"><i class="ph-fill ph-bank"></i></span>
             <div class="pw-bank-info"><strong>${esc(g.bank)}</strong><small>Bank Account · ${esc(b.currency)}${b.account ? ' · ····' + esc(String(b.account).slice(-4)) : ''}</small></div>
             <strong class="pw-bank-bal">${fmt(walletBal(b), b.currency)}</strong></div></div>`).join('');
-    const note = banks.length ? '' : `<div class="pw-bank">
+    const note = (!hasBank || banks.length) ? '' : `<div class="pw-bank">
         <div class="pw-bank-head"><span class="pw-bank-ico"><i class="ph-fill ph-bank"></i></span>
             <div class="pw-bank-info"><strong>${esc(g.bank)}</strong><small>Bank Account</small></div>
             <span class="pw-opt">Ikhtiyaari</span></div>
         <div class="pw-note"><i class="ph ph-info"></i><span>Account number-ka waxaa lagu daraa marka la diyaariyo.</span></div></div>`;
-    const add = free.length ? `<button class="pw-add" onclick="openBankModal('${p.id}','${kind}','${g.key}')"><i class="ph-bold ph-plus"></i> Add Bank Account</button>` : '';
+    const add = (hasBank && free.length) ? `<button class="pw-add" onclick="openBankModal('${p.id}','${kind}','${g.key}')"><i class="ph-bold ph-plus"></i> Add Bank Account</button>` : '';
     return `<div class="pw-group">${multi ? `<div class="pw-gtitle">${esc(g.key)}</div>` : ''}
         <div class="pw-tiles">${tiles}</div>${bankRows}${note}${add}</div>`;
 }
@@ -475,7 +478,7 @@ function groupHTML(p, g, kind) {
 function providerCardHTML(p, kind) {
     return `<div class="panel pw-card">
         <div class="pw-head"><span class="pw-logo ${p.cls}">${esc(p.badge)}</span>
-            <div class="pw-title"><strong>${esc(p.name)}</strong><small>${esc(p.country)} · Mobile Money</small></div>
+            <div class="pw-title"><strong>${esc(p.name)}</strong><small>${esc(p.sub || (p.country + ' · Mobile Money'))}</small></div>
             <button class="pw-menu" onclick="showSection('walletSettings')" title="Wallet settings"><i class="ph-bold ph-dots-three-vertical"></i></button></div>
         ${p.groups.map(g => groupHTML(p, g, kind)).join('')}
     </div>`;
@@ -1027,6 +1030,14 @@ function updateProviderHint() {
     const p = PROVIDERS.find(x => x.id === $('#walletProvider').value);
     if (!p) return;
     const names = p.groups.flatMap(g => g.currencies.map(c => `${g.key} ${c}`));
+    const row = $('#walletCurRow');
+    row.hidden = !p.pick;
+    if (p.pick) {
+        $('#walletCurChips').innerHTML = p.groups[0].currencies.map((c, i) => `<button type="button" class="chip${i === 0 ? ' active' : ''}" data-cur="${c}">${esc(curName(c))}</button>`).join('');
+        $$('#walletCurChips .chip').forEach(b => b.onclick = () => b.classList.toggle('active'));
+        $('#walletProviderHint').innerHTML = 'Cash wallets are created on their own. Pick the currencies you hold cash in; you can add another currency later.';
+        return;
+    }
     $('#walletProviderHint').innerHTML = `Creates: <b>${esc(names.join(', '))}</b>.<br>Bank: ${esc(p.groups.map(g => g.bank).join(', '))} (optional, added later from the Wallets page).`;
 }
 
@@ -1053,15 +1064,23 @@ $('#walletForm').onsubmit = async e => {
     const p = PROVIDERS.find(x => x.id === $('#walletProvider').value);
     if (!p) return;
     const kind = $('#walletKind').value === 'Business' ? 'Business' : 'Personal';
-    if (data.wallets.some(w => w.provider === p.id && kindOf(w) === kind)) return toast(`${p.name} (${kind}) already exists.`);
+    let picked = null;
+    if (p.pick) {
+        picked = [...$$('#walletCurChips .chip.active')].map(b => b.dataset.cur);
+        if (!picked.length) return toast('Choose at least one currency.');
+    } else if (data.wallets.some(w => w.provider === p.id && kindOf(w) === kind)) {
+        return toast(`${p.name} (${kind}) already exists.`);
+    }
     const fullName = $('#walletFullName').value.trim();
     const made = [];
     let i = 0;
-    p.groups.forEach(g => g.currencies.forEach(currency => {
+    p.groups.forEach(g => g.currencies.filter(c => !picked || picked.includes(c)).forEach(currency => {
+        if (p.pick && data.wallets.some(w => w.provider === p.id && w.group === g.key && kindOf(w) === kind && w.currency === currency)) return;
         const name = uniqueWalletName(`${g.key} ${currency}`, kind);
         made.push(name);
-        data.wallets.push({ id: Date.now() + (i++), name, fullName, kind, account: '', type: 'E-Wallet', currency, provider: p.id, group: g.key, isBank: false });
+        data.wallets.push({ id: Date.now() + (i++), name, fullName, kind, account: '', type: p.pick ? 'Cash' : 'E-Wallet', currency, provider: p.id, group: g.key, isBank: false });
     }));
+    if (!made.length) return toast(`${p.name} (${kind}) already has those currencies.`);
     e.target.reset();
     setWalletKind('Personal');
     closeModal('walletModal');
@@ -1667,3 +1686,78 @@ updatePinStatus();
 refreshCurrencyWalletSelects();
 const bootStarted = Date.now();
 bootAuth().finally(() => setTimeout(hideSplash, Math.max(0, 1000 - (Date.now() - bootStarted))));
+
+// ============================================================
+// MODERN SELECT (custom dropdown on top of every <select>)
+// ============================================================
+(function modernSelects() {
+    const valDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+    Object.defineProperty(HTMLSelectElement.prototype, 'value', {
+        get() { return valDesc.get.call(this); },
+        set(v) { valDesc.set.call(this, v); this._cs && this._cs.sync(); }
+    });
+    let panel = null, owner = null;
+    const closePanel = () => { if (panel) panel.remove(); if (owner) owner.wrap.classList.remove('open'); panel = owner = null; };
+
+    function build(sel) {
+        if (sel._cs || sel.closest('.cs')) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'cs' + (sel.classList.contains('currency') ? ' cs-pill' : '');
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'cs-btn';
+        btn.innerHTML = '<span class="cs-label"></span><i class="ph-bold ph-caret-down"></i>';
+        sel.parentNode.insertBefore(wrap, sel);
+        wrap.appendChild(btn); wrap.appendChild(sel);
+        sel.classList.add('cs-native');
+        const label = btn.querySelector('.cs-label');
+        const api = {
+            wrap, sel,
+            sync() {
+                const o = sel.options[sel.selectedIndex];
+                label.textContent = o ? o.textContent : '';
+                label.classList.toggle('placeholder', !o || o.value === '');
+                btn.disabled = sel.disabled;
+            }
+        };
+        sel._cs = api;
+        api.sync();
+        new MutationObserver(api.sync).observe(sel, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled'] });
+        sel.addEventListener('change', api.sync);
+        btn.addEventListener('click', ev => {
+            ev.preventDefault();
+            if (owner === api) return closePanel();
+            closePanel();
+            owner = api; wrap.classList.add('open');
+            panel = document.createElement('div');
+            panel.className = 'cs-panel';
+            [...sel.options].forEach(o => {
+                const it = document.createElement('button');
+                it.type = 'button';
+                it.className = 'cs-opt' + (o.selected ? ' selected' : '');
+                it.disabled = o.disabled;
+                it.innerHTML = `<span>${esc(o.textContent)}</span>${o.selected ? '<i class="ph-bold ph-check"></i>' : ''}`;
+                it.onclick = () => { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); closePanel(); btn.focus(); };
+                panel.appendChild(it);
+            });
+            document.body.appendChild(panel);
+            const r = btn.getBoundingClientRect();
+            const below = innerHeight - r.bottom - 12, above = r.top - 12;
+            const up = below < 180 && above > below;
+            panel.style.minWidth = Math.max(r.width, 160) + 'px';
+            panel.style.left = Math.min(r.left, innerWidth - Math.max(r.width, 160) - 8) + 'px';
+            panel.style.maxHeight = Math.min(300, up ? above : below) + 'px';
+            if (up) panel.style.bottom = (innerHeight - r.top + 6) + 'px'; else panel.style.top = (r.bottom + 6) + 'px';
+            panel.querySelector('.selected')?.scrollIntoView({ block: 'nearest' });
+        });
+    }
+
+    const all = root => (root.matches?.('select') ? [root] : []).concat([...(root.querySelectorAll?.('select') || [])]);
+    all(document).forEach(build);
+    new MutationObserver(muts => muts.forEach(m => m.addedNodes.forEach(n => n.nodeType === 1 && all(n).forEach(build))))
+        .observe(document.body, { childList: true, subtree: true });
+    document.addEventListener('mousedown', e => { if (panel && !panel.contains(e.target) && !owner.wrap.contains(e.target)) closePanel(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+    addEventListener('resize', closePanel);
+    document.addEventListener('scroll', e => { if (panel && !panel.contains(e.target)) closePanel(); }, true);
+    document.addEventListener('reset', () => setTimeout(() => $$('select').forEach(s => s._cs && s._cs.sync()), 0), true);
+})();

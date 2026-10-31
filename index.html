@@ -6,7 +6,7 @@
     <title>ActivityPlus - Personal Money Management</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css">
@@ -137,7 +137,7 @@
                         <p class="hero-eyebrow" id="heroGreeting">Welcome back</p>
                         <p class="hero-label">Total Balance</p>
                         <h2 id="balanceValue" class="hero-amount">0</h2>
-                        <small id="balanceLabel" class="hero-sub">All currencies</small>
+                        <small id="balanceLabel" class="hero-sub">ALL CURRENCY</small>
                     </div>
                     <button type="button" class="hero-badge hero-eye" id="toggleBalance" aria-label="Hide or show balance" title="Hide / show balance"><i class="ph-bold ph-eye"></i></button>
                 </div>
@@ -165,7 +165,7 @@
             </div>
 
             <div class="currency-tabs">
-                <button class="currency active" data-currency="ALL">All currencies</button>
+                <button class="currency active" data-currency="ALL">ALL CURRENCY</button>
                 <button class="currency" data-currency="USD">US DOLLAR</button>
                 <button class="currency" data-currency="SLSH">SL SHILLING</button>
                 <button class="currency" data-currency="ETB">ET BIRR</button>
@@ -678,6 +678,10 @@
                     <input type="hidden" id="walletKind" value="Personal">
                 </div>
                 <label>Provider<select id="walletProvider"></select></label>
+                <div class="field" id="walletCurRow" hidden>
+                    <span class="field-label">Currency (choose one or more)</span>
+                    <div class="chips" id="walletCurChips"></div>
+                </div>
                 <div class="ws-hint" id="walletProviderHint"></div>
                 <button class="primary-btn full" type="submit"><i class="ph-bold ph-wallet"></i> Create Wallet</button>
             </form>
