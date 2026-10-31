@@ -2058,3 +2058,25 @@ form input:focus { border-color: var(--primary); background: var(--panel); box-s
     .qa-btn { flex-direction: column; gap: 5px; padding: 8px 4px; font-size: 11px; text-align: center; }
     .cur-card strong { font-size: 16px; }
 }
+
+/* ---- v5.1 fix: nothing may push the page wider than the screen ---- */
+html, body { max-width: 100%; overflow-x: hidden; }
+.main, .section, .grid-2, .grid-2 > *, .dash-side, .panel, .panel-head > div, .transaction-list { min-width: 0; max-width: 100%; }
+.grid-2 { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+.tx-item > .amount { flex-shrink: 0; }
+.panel-head { min-width: 0; }
+.panel-head .text-btn { flex-shrink: 0; margin-left: auto; }
+@media (max-width: 1100px) { .grid-2 { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) {
+    .tx-item { gap: 8px; padding: 9px 4px; }
+    .tx-item .pill { display: none; }
+    .tx-icon { width: 32px; height: 32px; font-size: 1rem; }
+    .tx-info strong { font-size: 13px; }
+    .tx-info small { font-size: 11px; margin-top: 1px; }
+    .amount { font-size: 12.5px; text-align: right; }
+    .tx-date { font-size: 10.5px; margin-top: 1px; }
+    .transaction-list { margin-top: 10px; }
+    .wallet-split { grid-template-columns: minmax(0, 1fr); }
+    .panel-head h3 { font-size: 14px; }
+    .panel-icon { width: 30px; height: 30px; font-size: 15px; border-radius: 10px; }
+}
