@@ -932,6 +932,32 @@
         </div>
     </div>
 
+    <div class="status-overlay" id="logoutConfirmPopup" aria-modal="true" role="dialog">
+        <div class="status-card">
+            <div class="status-icon warning"><i class="ph-bold ph-warning"></i></div>
+            <h2>Logout?</h2>
+            <p>Are you sure you want to logout?</p>
+            <div class="confirm-actions">
+                <button type="button" class="secondary-btn" id="cancelLogout">Cancel</button>
+                <button type="button" class="danger-btn" id="confirmLogout">Yes, Logout</button>
+            </div>
+        </div>
+    </div>
+    <div class="status-overlay" id="statusPopup" aria-live="assertive" aria-modal="true" role="dialog">
+        <div class="status-card">
+            <div class="status-icon" id="statusIcon"><i class="ph-bold ph-check"></i></div>
+            <h2 id="statusTitle">Success!</h2>
+            <p id="statusMessage">Your action was completed.</p>
+            <button type="button" class="primary-btn full" id="statusDone">Done</button>
+        </div>
+    </div>
+    <div class="modal" id="transactionDetailModal">
+        <div class="modal-box detail-modal-box">
+            <button class="close" data-close="transactionDetailModal"><i class="ph-bold ph-x"></i></button>
+            <h2>Transaction Details</h2>
+            <div id="transactionDetailContent"></div>
+        </div>
+    </div>
     <div class="toast" id="toast"></div>
 
     <div id="pinConfirmModal" class="modal">

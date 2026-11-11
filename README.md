@@ -31,7 +31,11 @@ ActivityPlus is a lightweight, framework-free web app for managing personal mone
 | **Multi-currency** | US Dollar (USD), SL Shilling (SLSH), ET Birr (ETB) |
 | **Reports & Backup** | PDF report, CSV export, JSON backup and restore |
 | **Security** | Email/password login, plus PIN and password confirmation before deleting or resetting data |
-| **Experience** | Responsive layout (desktop, tablet, mobile), dark mode, a thin loading bar (the screen is never blocked) |
+| **Experience** | Responsive layout (desktop, tablet, mobile), dark mode, a thin loading bar, and success/error/warning popups |
+| **Transaction details** | Open each transaction to view its full record, including wallet, date, amount, and status |
+| **Transaction correction** | Reverse income, expenses, and wallet transfers with a linked offset entry; the original remains in history |
+| **Balance protection** | Expenses are blocked when the selected wallet does not have enough funds |
+| **Logout safety** | A confirmation popup appears before signing out |
 
 ## Tech Stack
 
@@ -132,3 +136,15 @@ All rights reserved. Contact the author before reusing or redistributing.
 <div align="center">
 Built with care by <strong>Abdihakim</strong>
 </div>
+
+
+## Recent UI and safety updates
+
+- Status dialogs distinguish successful actions, errors, and warnings.
+- Expense creation and editing checks the selected wallet's available balance.
+- Transaction history includes a details view and reversal action.
+- Reversal creates a linked counter-entry and preserves the original transaction for audit history. Exchange reversal is intentionally not automated because it requires reviewing both currency amounts and the exchange rate.
+- Dashboard balance hero and button corner radii have been reduced to a more compact style.
+- Logout requires explicit confirmation.
+
+No database schema migration is required for these frontend changes. Existing Supabase tables and user records are not intentionally modified by packaging this update. Test first with a small transaction in a non-production/test account and keep a JSON backup before deploying.

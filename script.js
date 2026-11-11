@@ -374,13 +374,27 @@ const kindTotals = kind => {
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m]));
 
-const toast = msg => {
-    const t = $("#toast");
-    if (!t) return;
-    t.textContent = msg;
-    t.classList.add("show");
-    setTimeout(() => t.classList.remove("show"), 2400);
+let statusTimer = null;
+const toast = (msg, kind) => {
+    const popup = $("#statusPopup");
+    if (!popup) return;
+    const text = String(msg || "Please try again.");
+    const type = kind || (/could not|failed|incorrect|insufficient|error|not enough|unable/i.test(text) ? "error" : /are you sure|warning|confirm|repeat|changed on another/i.test(text) ? "warning" : "success");
+    const config = {
+        success: ["Success!", "ph-check"],
+        error: ["Error!", "ph-x"],
+        warning: ["Warning!", "ph-warning"]
+    }[type] || ["Notice", "ph-info"];
+    $("#statusTitle").textContent = config[0];
+    $("#statusMessage").textContent = text;
+    $("#statusIcon").className = "status-icon " + type;
+    $("#statusIcon").innerHTML = `<i class="ph-bold ${config[1]}"></i>`;
+    popup.classList.add("show");
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => popup.classList.remove("show"), 4200);
 };
+$("#statusDone").onclick = () => $("#statusPopup").classList.remove("show");
+$("#statusPopup").addEventListener("click", e => { if (e.target.id === "statusPopup") $("#statusPopup").classList.remove("show"); });
 
 const txAmount = (type, c, cat) => data.transactions
     .filter(t => t.type === type && t.currency === c && (!cat || t.category === cat))
@@ -577,7 +591,7 @@ const txAmountText = tx => tx.type === 'exchange'
 function txRow(tx) {
     const ico = { income: 'ph-arrow-down', expense: 'ph-shopping-cart', transfer: 'ph-arrow-right', exchange: 'ph-arrows-clockwise' }[tx.type] || 'ph-arrow-right';
     const where = tx.wallet || (tx.from + " → " + tx.to);
-    return `<div class="tx-item">
+    return `<div class="tx-item tx-item-clickable" role="button" tabindex="0" onclick="viewTx(${Number(tx.id)})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();viewTx(${Number(tx.id)})}">
         <div class="tx-icon ${esc(tx.type)}"><i class="ph-fill ${ico}"></i></div>
         <div class="tx-info">
             <strong>${esc(tx.description)}</strong>
@@ -617,8 +631,10 @@ function renderTransactions() {
             <td>${t.date}</td>
             <td class="${TX_CLASS[t.type] || ''}"><strong>${txAmountText(t)}</strong></td>
             <td><div class="row-actions">
-                <button class="small-btn" onclick="editTx(${t.id})"><i class="ph-bold ph-pencil-simple"></i></button>
-                <button class="small-btn delete" onclick="deleteTx(${t.id})"><i class="ph-bold ph-trash"></i></button>
+                <button class="small-btn" title="View details" onclick="viewTx(${t.id})"><i class="ph-bold ph-eye"></i></button>
+                ${!t.reversedBy && !t.reversalOf && t.type !== 'exchange' ? `<button class="small-btn" title="Reverse transaction" onclick="reverseTx(${t.id})"><i class="ph-bold ph-arrow-counter-clockwise"></i></button>` : ''}
+                <button class="small-btn" title="Edit" onclick="editTx(${t.id})"><i class="ph-bold ph-pencil-simple"></i></button>
+                <button class="small-btn delete" title="Delete" onclick="deleteTx(${t.id})"><i class="ph-bold ph-trash"></i></button>
             </div></td>
         </tr>`).join("") + more
         : `<tr><td colspan="7" class="empty">No transactions found.</td></tr>`;
@@ -917,6 +933,14 @@ $('#transactionForm').onsubmit = async e => {
     if (!w) return toast('Choose a wallet first.');
     const amount = Number($('#txAmount').value);
     if (!(amount > 0)) return toast('Enter a valid amount.');
+    if ($('#txType').value === 'expense') {
+        const alreadyCounted = id ? data.transactions.find(x => x.id === id && x.type === 'expense' && x.wallet === w.name) : null;
+        const available = walletBal(w) + Number(alreadyCounted?.amount || 0);
+        if (amount > available) {
+            toast(`Insufficient Balance. ${w.name} has ${fmt(available, w.currency)} available.`, "error");
+            return;
+        }
+    }
     const obj = {
         id: id || Date.now(),
         type: $('#txType').value,
@@ -1611,13 +1635,20 @@ function updatePinStatus() {
     if ($("#pinStatus")) $("#pinStatus").textContent = has ? "PIN is active on this browser." : "No PIN created yet.";
 }
 
-$("#logoutBtn").onclick = async () => {
+$("#logoutBtn").onclick = () => $("#logoutConfirmPopup").classList.add("show");
+$("#cancelLogout").onclick = () => $("#logoutConfirmPopup").classList.remove("show");
+$("#confirmLogout").onclick = async () => {
+    $("#logoutConfirmPopup").classList.remove("show");
     await withBusy("Signing out...", async () => {
-        if (sb) await sb.auth.signOut();
+        if (sb) {
+            const { error } = await sb.auth.signOut();
+            if (error) { toast("Could not logout: " + error.message, "error"); return; }
+        }
         currentUser = null;
         data = normalizeData(defaultData);
         serverStamp = null; lastSaved = null; savingsInDb = false;
         renderAll();
+        toast("You have been logged out.");
     });
 };
 
@@ -1673,6 +1704,62 @@ $$("#walletKindSeg .seg-btn").forEach(b => b.addEventListener("click", () => set
 // ============================================================
 $("#txCurrency").addEventListener("change", populateWallets);
 $("#transferCurrency").addEventListener("change", () => { populateWallets(); pickDefaultTransferWallets(); });
+
+// Transaction profile: open a complete, read-only transaction summary.
+window.viewTx = id => {
+    const t = data.transactions.find(x => String(x.id) === String(id));
+    if (!t) return toast("Transaction could not be found.", "error");
+    const fields = [
+        ["Description", t.description || TX_LABEL[t.type] || t.type],
+        ["Type", TX_LABEL[t.type] || t.type],
+        ["Category", t.category || "—"],
+        ["Amount", txAmountText(t)],
+        ["Wallet", t.wallet || "—"],
+        ["From", t.from || "—"],
+        ["To", t.to || "—"],
+        ["Date", t.date || "—"],
+        ["Note", t.note || "—"],
+        ["Transaction ID", t.id],
+        ["Status", t.reversedBy ? "Reversed" : t.reversalOf ? "Reversal entry" : "Completed"]
+    ];
+    $("#transactionDetailContent").innerHTML = `<div class="detail-list">${fields.filter(([k,v]) => v !== "—" || ["Wallet","From","To","Note"].includes(k)).map(([k,v]) => `<div class="detail-row"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join("")}</div>`;
+    $("#transactionDetailModal").classList.add("show");
+};
+
+// Reversals create a linked offsetting entry; the original record is retained for audit history.
+window.reverseTx = async id => {
+    const original = data.transactions.find(x => String(x.id) === String(id));
+    if (!original) return toast("Transaction could not be found.", "error");
+    if (original.reversedBy) return toast("This transaction has already been reversed.", "warning");
+    if (original.reversalOf) return toast("A reversal entry cannot be reversed again.", "warning");
+    if (original.type === "exchange") return toast("Exchange reversal needs a separate currency-rate review. Please contact support before changing it.", "warning");
+    if (!confirm("Reverse this transaction? A linked correction entry will be created and the original will remain in your history.")) return;
+    const reversalId = Date.now();
+    const correction = {
+        ...original,
+        id: reversalId,
+        description: `Reversal: ${original.description || TX_LABEL[original.type]}`,
+        date: new Date().toISOString().slice(0, 10),
+        reversalOf: original.id,
+        reversedBy: null
+    };
+    if (original.type === "income") correction.type = "expense";
+    else if (original.type === "expense") correction.type = "income";
+    else if (original.type === "transfer") {
+        correction.from = original.to;
+        correction.to = original.from;
+    } else return toast("This transaction type cannot be reversed here.", "warning");
+    original.reversedBy = reversalId;
+    data.transactions.push(correction);
+    if (await save(true)) {
+        toast("Transaction reversed successfully.");
+        renderAll();
+    } else {
+        original.reversedBy = null;
+        data.transactions = data.transactions.filter(x => x.id !== reversalId);
+        renderAll();
+    }
+};
 
 // ============================================================
 // SECURE ACTIONS (PIN + PASSWORD)
