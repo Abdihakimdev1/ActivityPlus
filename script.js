@@ -67,14 +67,14 @@ function setupEyeToggles() {
 // MAIN APP DATA
 // ============================================================
 const KEY = "activityplus_v2";
-const CATS = ["Salary", "Food", "Transport", "Shopping", "Bills", "Entertainment", "Business", "Other"];
+const CATS = ["Salary", "Food", "Beverage", "Transport", "Internet", "Shopping", "Business", "Parking fee", "Bills", "Other"];
 
 const defaultData = {
     transactions: [],
     goals: [],
     wallets: [
         { id: 1, name: "Cash", fullName: "", kind: "Personal", type: "Cash", currency: "USD" },
-        { id: 2, name: "E-Wallet", fullName: "", kind: "Personal", type: "E-Wallet", currency: "SLSH" },
+        { id: 2, name: "Wallet", fullName: "", kind: "Personal", type: "E-Wallet", currency: "SLSH" },
         { id: 3, name: "Bank", fullName: "", kind: "Personal", type: "Bank", currency: "ETB" }
     ],
     budgets: [],
